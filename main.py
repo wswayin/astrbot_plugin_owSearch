@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
+
+PLUGIN_ROOT = Path(__file__).resolve().parent
+if str(PLUGIN_ROOT) not in sys.path:
+    sys.path.insert(0, str(PLUGIN_ROOT))
 
 try:
     from astrbot.api.event import AstrMessageEvent, filter
@@ -19,8 +24,7 @@ class OwSearchPlugin(Star):
     def __init__(self, context: Context, config=None):
         super().__init__(context)
         self.plugin_config = PluginConfig.from_mapping(config or {})
-        plugin_root = Path(__file__).resolve().parent
-        data_dir = self.plugin_config.resolve_storage_dir(plugin_root)
+        data_dir = self.plugin_config.resolve_storage_dir(PLUGIN_ROOT)
         self.handler = OwCommandHandler(self.plugin_config, data_dir)
 
     @filter.command("ow", alias={"守望"})

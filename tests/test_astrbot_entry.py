@@ -1,5 +1,7 @@
 import asyncio
 import importlib
+import importlib.util
+from pathlib import Path
 import sys
 import tempfile
 import types
@@ -75,6 +77,23 @@ class AstrBotEntryTests(unittest.TestCase):
         self.assertEqual(main.OwSearchPlugin._astrbot_register["name"], "astrbot_plugin_owSearch")
         self.assertEqual(main.OwSearchPlugin.ow._astrbot_command, "ow")
         self.assertIn("守望", main.OwSearchPlugin.ow._astrbot_alias)
+
+    def test_main_imports_when_plugin_root_is_not_on_sys_path(self):
+        root = Path.cwd().resolve()
+        saved_path = list(sys.path)
+        sys.modules.pop("main", None)
+        try:
+            sys.path = [entry for entry in sys.path if entry and Path(entry).resolve() != root]
+            spec = importlib.util.spec_from_file_location("main", root / "main.py")
+            self.assertIsNotNone(spec)
+            module = importlib.util.module_from_spec(spec)
+            sys.modules["main"] = module
+            spec.loader.exec_module(module)
+            self.assertEqual(module.OwSearchPlugin._astrbot_register["name"], "astrbot_plugin_owSearch")
+            self.assertIn(str(root), sys.path)
+        finally:
+            sys.path = saved_path
+            sys.modules.pop("main", None)
 
     def test_plugin_help_reply(self):
         async def run():
