@@ -75,8 +75,11 @@ class AstrBotEntryTests(unittest.TestCase):
     def test_main_registers_ow_command_alias(self):
         main = importlib.import_module("main")
         self.assertEqual(main.OwSearchPlugin._astrbot_register["name"], "astrbot_plugin_owSearch")
+        self.assertEqual(main.OwSearchPlugin._astrbot_register["author"], "wswayin")
+        self.assertEqual(main.OwSearchPlugin._astrbot_register["version"], "0.2.0")
         self.assertEqual(main.OwSearchPlugin.ow._astrbot_command, "ow")
         self.assertIn("守望", main.OwSearchPlugin.ow._astrbot_alias)
+        self.assertEqual(main.OwSearchPlugin.courtroom._astrbot_command, "开庭")
 
     def test_main_imports_when_plugin_root_is_not_on_sys_path(self):
         root = Path.cwd().resolve()

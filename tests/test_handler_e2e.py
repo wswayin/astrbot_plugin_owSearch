@@ -95,9 +95,10 @@ def sample_detail() -> MatchDetail:
 
 
 class FakeMatchService:
-    async def latest_analyzable_detail(self, bnet_id, *, context_key=None):
+    async def latest_analyzable_detail(self, bnet_id, *, context_key=None, index=1):
         self.bnet_id = bnet_id
         self.context_key = context_key
+        self.index = index
         return sample_detail()
 
 
@@ -122,16 +123,19 @@ class HandlerE2ETests(unittest.TestCase):
         async def run():
             with tempfile.TemporaryDirectory() as temp_dir:
                 handler = OwCommandHandler(PluginConfig.from_mapping({}), Path(temp_dir))
-                handler.match_service = FakeMatchService()
+                fake_match_service = FakeMatchService()
+                handler.match_service = fake_match_service
                 handler.analysis_service = FakeAnalysisService()
                 try:
                     replies = await handler.handle(
-                        "/ow 开庭 Player#12345",
+                        "/ow 开庭 Player#12345 2",
                         ContextKey(platform="test", session="room", user="user"),
                     )
                 finally:
                     await handler.close()
 
+                self.assertEqual(fake_match_service.bnet_id, "Player#12345")
+                self.assertEqual(fake_match_service.index, 2)
                 self.assertEqual([reply.kind for reply in replies], ["image", "image", "image"])
                 for reply in replies:
                     path = Path(reply.path)

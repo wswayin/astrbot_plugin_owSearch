@@ -165,7 +165,11 @@ class OwCommandHandler:
 
     async def _courtroom(self, intent: CommandIntent, context_key: ContextKey) -> list[ReplyItem]:
         bnet_id = self._require_bnet(intent)
-        detail = await self.match_service.latest_analyzable_detail(bnet_id, context_key=context_key)
+        detail = await self.match_service.latest_analyzable_detail(
+            bnet_id,
+            context_key=context_key,
+            index=intent.index or 1,
+        )
         analysis = await self.analysis_service.analyze(detail)
         try:
             return [

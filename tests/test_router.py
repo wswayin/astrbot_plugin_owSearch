@@ -8,7 +8,28 @@ class RouterTests(unittest.TestCase):
         intent = parse_command("/ow 开庭 Player#12345")
         self.assertEqual(intent.name, "courtroom")
         self.assertEqual(intent.bnet_id, "Player#12345")
+        self.assertEqual(intent.index, 1)
         self.assertTrue(intent.analyze)
+
+    def test_courtroom_index(self):
+        intent = parse_command("/ow 开庭 Player#12345 2")
+        self.assertEqual(intent.name, "courtroom")
+        self.assertEqual(intent.bnet_id, "Player#12345")
+        self.assertEqual(intent.index, 2)
+        self.assertTrue(intent.show_all_heroes)
+        self.assertTrue(intent.analyze)
+
+    def test_courtroom_direct_command(self):
+        intent = parse_command("/开庭 Player#12345 3")
+        self.assertEqual(intent.name, "courtroom")
+        self.assertEqual(intent.bnet_id, "Player#12345")
+        self.assertEqual(intent.index, 3)
+
+    def test_analysis_with_player_aliases_courtroom(self):
+        intent = parse_command("/ow 分析 Player#12345 2")
+        self.assertEqual(intent.name, "courtroom")
+        self.assertEqual(intent.bnet_id, "Player#12345")
+        self.assertEqual(intent.index, 2)
 
     def test_context_detail_index(self):
         intent = parse_command("/ow 详情 2")

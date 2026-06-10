@@ -21,7 +21,7 @@ def render_match_list_image(identity: PlayerIdentity, matches: list[MatchSummary
     image = canvas(width, height)
     draw = ImageDraw.Draw(image)
     fonts = font_pack(font_paths)
-    draw_header(draw, f"{identity.full_id} 最近对局", "回复 /ow 详情 1 可查看单局，/ow 分析 1 可开锐评", width, fonts)
+    draw_header(draw, f"{identity.full_id} 最近对局", f"回复 /ow 详情 1 查看单局，/ow 开庭 {identity.full_id} 1 开庭", width, fonts)
 
     rounded_panel(draw, (48, 176, width - 48, height - 44), fill=PANEL_2)
     if not matches:

@@ -19,7 +19,7 @@ from owsearch.config import PluginConfig
 from owsearch.models import ReplyItem
 
 
-@register("astrbot_plugin_owSearch", "codex", "Overwatch player and match search through Dashen data.", "0.1.0")
+@register("astrbot_plugin_owSearch", "wswayin", "Overwatch player and match search through Dashen data.", "0.2.0")
 class OwSearchPlugin(Star):
     def __init__(self, context: Context, config=None):
         super().__init__(context)
@@ -30,6 +30,20 @@ class OwSearchPlugin(Star):
     @filter.command("ow", alias={"守望"})
     async def ow(self, event: AstrMessageEvent):
         message = message_text_from_event(event)
+        context_key = context_key_from_event(event)
+        replies = await self.handler.handle(message, context_key)
+        for reply in replies:
+            yield self._to_astrbot_result(event, reply)
+
+    @filter.command("开庭")
+    async def courtroom(self, event: AstrMessageEvent):
+        message = message_text_from_event(event)
+        stripped = str(message or "").strip()
+        normalized = stripped[1:] if stripped.startswith("/") else stripped
+        if normalized.startswith("开庭"):
+            message = f"/ow {normalized}"
+        else:
+            message = f"/ow 开庭 {stripped}"
         context_key = context_key_from_event(event)
         replies = await self.handler.handle(message, context_key)
         for reply in replies:

@@ -47,7 +47,7 @@ def parse_command(message: str) -> CommandIntent:
     if not tokens:
         return CommandIntent(name="help", raw_args=raw_args)
 
-    head = tokens[0].lower()
+    head = tokens[0].lower().lstrip("/")
     rest = tokens[1:]
 
     shortcut_index = _parse_index(tokens[0])
@@ -105,6 +105,17 @@ def parse_command(message: str) -> CommandIntent:
             return CommandIntent(name="analysis", raw_args=raw_args)
         first = rest[0]
         index = _parse_index(first)
+        if index is None and not UUIDISH_RE.match(first):
+            selector = rest[1] if len(rest) > 1 else ""
+            return CommandIntent(
+                name="courtroom",
+                bnet_id=first,
+                selector=selector.rstrip("*"),
+                index=_parse_index(selector) or 1,
+                show_all_heroes=True,
+                analyze=True,
+                raw_args=raw_args,
+            )
         bnet_id = "" if index is not None or UUIDISH_RE.match(first) else first
         selector = first if not bnet_id else (rest[1] if len(rest) > 1 else "")
         return CommandIntent(
@@ -118,8 +129,28 @@ def parse_command(message: str) -> CommandIntent:
         )
 
     if head in {"court", "courtroom", "开庭"}:
-        bnet_id = rest[0] if rest else ""
-        return CommandIntent(name="courtroom", bnet_id=bnet_id, show_all_heroes=True, analyze=True, raw_args=raw_args)
+        if not rest:
+            return CommandIntent(name="courtroom", show_all_heroes=True, analyze=True, raw_args=raw_args)
+        first = rest[0]
+        first_index = _parse_index(first)
+        if first_index is not None:
+            return CommandIntent(
+                name="analysis",
+                index=first_index,
+                show_all_heroes=True,
+                analyze=True,
+                raw_args=raw_args,
+            )
+        selector = rest[1] if len(rest) > 1 else ""
+        return CommandIntent(
+            name="courtroom",
+            bnet_id=first,
+            selector=selector.rstrip("*"),
+            index=_parse_index(selector) or 1,
+            show_all_heroes=True,
+            analyze=True,
+            raw_args=raw_args,
+        )
 
     if head in {"refresh", "刷新"}:
         bnet_id = rest[0] if rest else ""

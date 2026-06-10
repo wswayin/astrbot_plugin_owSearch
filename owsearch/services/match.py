@@ -97,12 +97,22 @@ class MatchService:
             source_match["gameMode"] = "SportFight"
             return self._build_detail(identity, source_match, fight_payload, match_kind="fight")
 
-    async def latest_analyzable_detail(self, bnet_id: str, *, context_key: ContextKey | None = None) -> MatchDetail:
+    async def latest_analyzable_detail(
+        self,
+        bnet_id: str,
+        *,
+        context_key: ContextKey | None = None,
+        index: int = 1,
+    ) -> MatchDetail:
+        if index <= 0:
+            raise NotFoundError("单局序号需要从 1 开始。")
         identity = await self.identity_service.resolve_bnet(bnet_id)
         raw_matches = await self._list_for_identity(identity, limit=20, include_fight=False)
         raw_matches = [item for item in raw_matches if not is_fight_match_payload(item)]
         if not raw_matches:
             raise NotFoundError("没有找到可分析的快速/竞技对局。", "角斗模式暂不支持全员数据和 AI 分析。")
+        if index > len(raw_matches):
+            raise NotFoundError(f"没有第 {index} 场可分析对局。", f"当前最近列表里只有 {len(raw_matches)} 场快速/竞技对局。")
         if context_key is not None:
             self.context_cache.set(
                 context_key,
@@ -111,7 +121,7 @@ class MatchService:
                     "matches_raw": raw_matches,
                 },
             )
-        return await self._fetch_detail(identity, raw_matches[0])
+        return await self._fetch_detail(identity, raw_matches[index - 1])
 
     async def _list_for_identity(self, identity: PlayerIdentity, *, limit: int, include_fight: bool) -> list[dict[str, Any]]:
         limit = max(1, min(20, int(limit)))
