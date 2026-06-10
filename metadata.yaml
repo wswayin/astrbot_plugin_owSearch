@@ -1,6 +1,6 @@
 name: astrbot_plugin_owSearch
 desc: Query Overwatch player profile and recent match data through NetEase Dashen endpoints.
 help: 使用 /ow 查看帮助，/ow 开庭 玩家#12345 查询最近一局，/ow 开庭 玩家#12345 2 查询最近第二局。
-version: v0.2.0
+version: v0.3.0
 author: wswayin
 repo: https://github.com/wswayin/astrbot_plugin_owSearch

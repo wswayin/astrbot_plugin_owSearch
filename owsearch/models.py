@@ -225,7 +225,7 @@ class MatchDetail:
 
 @dataclass(frozen=True)
 class ReplyItem:
-    kind: Literal["text", "image"]
+    kind: Literal["text", "image", "audio"]
     content: str = ""
     path: str = ""
     media_type: str = ""
@@ -237,3 +237,7 @@ class ReplyItem:
     @classmethod
     def image(cls, path: str, media_type: str = "image/png") -> "ReplyItem":
         return cls(kind="image", path=path, media_type=media_type)
+
+    @classmethod
+    def audio(cls, path: str, media_type: str = "audio/wav") -> "ReplyItem":
+        return cls(kind="audio", path=path, media_type=media_type)

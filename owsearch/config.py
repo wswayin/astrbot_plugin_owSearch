@@ -141,11 +141,22 @@ class RenderConfig:
 
 
 @dataclass(frozen=True)
+class OwGuessConfig:
+    asset_root: str = ""
+
+    @classmethod
+    def from_mapping(cls, raw: Mapping[str, Any]) -> "OwGuessConfig":
+        return cls(asset_root=str(_get(raw, "asset_root", "") or "").strip())
+
+
+@dataclass(frozen=True)
 class PluginConfig:
     dashen: DashenConfig = field(default_factory=DashenConfig)
     ai: AiConfig = field(default_factory=AiConfig)
     render: RenderConfig = field(default_factory=RenderConfig)
+    ow_guess: OwGuessConfig = field(default_factory=OwGuessConfig)
     storage_dir: str = "data"
+    ow_esports_api_key: str = ""
     default_match_limit: int = 10
     debug: bool = False
 
@@ -156,7 +167,9 @@ class PluginConfig:
             dashen=DashenConfig.from_mapping(_as_mapping(_get(raw, "dashen", {}))),
             ai=AiConfig.from_mapping(_as_mapping(_get(raw, "ai", {}))),
             render=RenderConfig.from_mapping(_as_mapping(_get(raw, "render", {}))),
+            ow_guess=OwGuessConfig.from_mapping(_as_mapping(_get(raw, "ow_guess", {}))),
             storage_dir=str(_get(raw, "storage_dir", "data") or "data").strip(),
+            ow_esports_api_key=str(_get(raw, "ow_esports_api_key", "") or "").strip(),
             default_match_limit=max(3, min(20, _as_int(_get(raw, "default_match_limit", 10), 10))),
             debug=_as_bool(_get(raw, "debug", False), False),
         )

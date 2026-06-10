@@ -113,10 +113,26 @@
       }
     }
   },
+  "ow_guess": {
+    "description": "OW 猜题资源包配置；questions.json 已内置，大体积音频/图片素材需单独放置。",
+    "type": "object",
+    "items": {
+      "asset_root": {
+        "description": "ow_guess_assets 资源包根目录。留空时自动查找 data/ow_guess_assets、插件根目录 ow_guess_assets、overstats/ow_guess_assets；相对路径按插件目录解析。",
+        "type": "string",
+        "default": ""
+      }
+    }
+  },
   "storage_dir": {
     "description": "缓存和渲染图片目录；相对路径会放在插件目录下",
     "type": "string",
     "default": "data"
+  },
+  "ow_esports_api_key": {
+    "description": "OW 电竞赛程 PandaScore API Key；仅 /ow 电竞 使用，未填写时该命令会提示未配置",
+    "type": "string",
+    "default": ""
   },
   "default_match_limit": {
     "description": "战绩列表默认返回数量",

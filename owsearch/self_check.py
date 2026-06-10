@@ -43,7 +43,7 @@ class SelfCheckReport:
 
 
 def _check_imports(report: SelfCheckReport) -> None:
-    for module_name in ("httpx", "PIL", "zoneinfo"):
+    for module_name in ("httpx", "PIL", "zoneinfo", "imageio_ffmpeg"):
         try:
             importlib.import_module(module_name)
         except Exception as exc:
@@ -66,7 +66,7 @@ def _check_schema(report: SelfCheckReport, root: Path) -> None:
     except Exception as exc:
         report.add("config schema JSON", False, f"{type(exc).__name__}: {exc}")
         return
-    for key in ("dashen", "ai", "render"):
+    for key in ("dashen", "ai", "render", "ow_guess"):
         report.add(f"config schema {key}", key in data, "missing" if key not in data else "")
 
 

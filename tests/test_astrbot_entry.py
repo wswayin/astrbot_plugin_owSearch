@@ -23,6 +23,15 @@ class FakeFilter:
 
         return decorator
 
+    @staticmethod
+    def llm_tool(name=None, **kwargs):
+        def decorator(func):
+            func._astrbot_llm_tool = name or func.__name__
+            func._astrbot_llm_tool_kwargs = dict(kwargs)
+            return func
+
+        return decorator
+
 
 def fake_register(name, author, desc, version):
     def decorator(cls):
@@ -37,6 +46,16 @@ def fake_register(name, author, desc, version):
     return decorator
 
 
+class FakeRecord:
+    def __init__(self, file="", url=""):
+        self.file = file
+        self.url = url
+
+    @classmethod
+    def fromFileSystem(cls, path):
+        return cls(file=path)
+
+
 class FakeEvent:
     message_str = "/ow"
 
@@ -45,6 +64,24 @@ class FakeEvent:
 
     def image_result(self, path):
         return ("image", path)
+
+    def chain_result(self, chain):
+        return ("chain", chain)
+
+
+class FakeToolBridge:
+    def __init__(self):
+        self.player_id = ""
+        self.index = 0
+
+    async def courtroom(self, player_id, *, index=1):
+        from owsearch.models import ReplyItem
+
+        self.player_id = player_id
+        self.index = index
+        path = Path(tempfile.gettempdir()) / "ow_tool_courtroom.png"
+        path.write_bytes(b"x" * 1200)
+        return [ReplyItem.image(str(path), "image/png")]
 
 
 class AstrBotEntryTests(unittest.TestCase):
@@ -57,9 +94,12 @@ class AstrBotEntryTests(unittest.TestCase):
         star_mod.Context = object
         star_mod.Star = FakeStar
         star_mod.register = fake_register
+        components_mod = types.ModuleType("astrbot.api.message_components")
+        components_mod.Record = FakeRecord
         sys.modules["astrbot"] = types.ModuleType("astrbot")
         sys.modules["astrbot.api"] = types.ModuleType("astrbot.api")
         sys.modules["astrbot.api.event"] = event_mod
+        sys.modules["astrbot.api.message_components"] = components_mod
         sys.modules["astrbot.api.star"] = star_mod
         sys.modules.pop("main", None)
 
@@ -76,10 +116,13 @@ class AstrBotEntryTests(unittest.TestCase):
         main = importlib.import_module("main")
         self.assertEqual(main.OwSearchPlugin._astrbot_register["name"], "astrbot_plugin_owSearch")
         self.assertEqual(main.OwSearchPlugin._astrbot_register["author"], "wswayin")
-        self.assertEqual(main.OwSearchPlugin._astrbot_register["version"], "0.2.0")
+        self.assertEqual(main.OwSearchPlugin._astrbot_register["version"], "0.3.0")
         self.assertEqual(main.OwSearchPlugin.ow._astrbot_command, "ow")
         self.assertIn("守望", main.OwSearchPlugin.ow._astrbot_alias)
         self.assertEqual(main.OwSearchPlugin.courtroom._astrbot_command, "开庭")
+        self.assertEqual(main.OwSearchPlugin.ow_courtroom._astrbot_llm_tool, "ow_courtroom")
+        self.assertEqual(main.OwSearchPlugin.ow_match_list._astrbot_llm_tool, "ow_match_list")
+        self.assertEqual(main.OwSearchPlugin.ow_hero_wiki._astrbot_llm_tool, "ow_hero_wiki")
 
     def test_main_imports_when_plugin_root_is_not_on_sys_path(self):
         root = Path.cwd().resolve()
@@ -111,6 +154,29 @@ class AstrBotEntryTests(unittest.TestCase):
                     self.assertIn("守望查询", replies[0][1])
                 finally:
                     await plugin.terminate()
+
+        asyncio.run(run())
+
+    def test_audio_reply_uses_record_component(self):
+        main = importlib.import_module("main")
+        plugin = object.__new__(main.OwSearchPlugin)
+        result = plugin._to_astrbot_result(FakeEvent(), main.ReplyItem.audio("voice.wav", "audio/wav"))
+        self.assertEqual(result[0], "chain")
+        self.assertEqual(result[1][0].file, "voice.wav")
+
+    def test_llm_tool_courtroom_uses_bridge(self):
+        async def run():
+            main = importlib.import_module("main")
+            plugin = object.__new__(main.OwSearchPlugin)
+            bridge = FakeToolBridge()
+            plugin.handler = types.SimpleNamespace(overstats_bridge=bridge)
+            results = []
+            async for item in plugin.ow_courtroom(FakeEvent(), "Player#12345", 2):
+                results.append(item)
+
+            self.assertEqual(bridge.player_id, "Player#12345")
+            self.assertEqual(bridge.index, 2)
+            self.assertEqual(results[0][0], "image")
 
         asyncio.run(run())
 
