@@ -49,7 +49,7 @@ class AstrBotEntryTests(unittest.TestCase):
     def setUp(self):
         self.original_modules = {name: sys.modules.get(name) for name in list(sys.modules) if name.startswith("astrbot")}
         event_mod = types.ModuleType("astrbot.api.event")
-        event_mod.AstrBotEvent = FakeEvent
+        event_mod.AstrMessageEvent = FakeEvent
         event_mod.filter = FakeFilter
         star_mod = types.ModuleType("astrbot.api.star")
         star_mod.Context = object

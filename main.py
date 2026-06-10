@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from astrbot.api.event import AstrBotEvent, filter
+try:
+    from astrbot.api.event import AstrMessageEvent, filter
+except ImportError:
+    from astrbot.api.event import AstrBotEvent as AstrMessageEvent, filter
 from astrbot.api.star import Context, Star, register
 
 from owsearch.commands.handler import OwCommandHandler
@@ -21,7 +24,7 @@ class OwSearchPlugin(Star):
         self.handler = OwCommandHandler(self.plugin_config, data_dir)
 
     @filter.command("ow", alias={"守望"})
-    async def ow(self, event: AstrBotEvent):
+    async def ow(self, event: AstrMessageEvent):
         message = message_text_from_event(event)
         context_key = context_key_from_event(event)
         replies = await self.handler.handle(message, context_key)
