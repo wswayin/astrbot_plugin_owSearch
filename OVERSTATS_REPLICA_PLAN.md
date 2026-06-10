@@ -94,7 +94,7 @@ AstrBot command layer
 - [x] README 更新为 v0.3.0 说明
 - [x] metadata/version 升级
 - [x] commit author 使用 `wswayin`
-- [ ] tag 并推送（本地 tag 先创建；推送待 GitHub 连接/认证恢复）
+- [x] tag 并推送
 
 ## 当前进度
 
@@ -133,7 +133,7 @@ AstrBot command layer
 - 2026-06-10：AstrBot LLM 工具层接入后单元测试 `71 tests OK`，自检 `result: OK`。
 - 2026-06-10：发布准备阶段将插件版本升级到 v0.3.0，并在 README 补充本版迁移摘要。
 - 2026-06-10：发布前验收通过：`71 tests OK`、`owsearch.self_check result: OK`；确认 `overstats/src/server.py` 与 `overstats/src/http_server/` 未打包，且无 web server 引用残留。
-- 2026-06-10：推送前检查发现 GitHub HTTPS TLS 握手失败，`gh` keyring token 失效，SSH 443 可连通但当前机器没有可用 GitHub 公钥；先执行本地提交和标签，待连接/认证恢复后继续推送。
+- 2026-06-10：推送前一度出现 GitHub HTTPS TLS 握手失败，`gh` keyring token 失效，SSH 443 可连通但当前机器没有可用 GitHub 公钥；随后 HTTPS push 恢复，`main` 与 `v0.3.0` tag 已推送到 GitHub。
 
 ## 交接
 
