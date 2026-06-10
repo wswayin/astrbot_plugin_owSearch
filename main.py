@@ -27,7 +27,7 @@ from owsearch.config import PluginConfig
 from owsearch.models import ReplyItem
 
 
-@register("astrbot_plugin_owSearch", "wswayin", "Overwatch player and match search through Dashen data.", "0.3.2")
+@register("astrbot_plugin_owSearch", "wswayin", "Overwatch player and match search through Dashen data.", "0.3.3")
 class OwSearchPlugin(Star):
     def __init__(self, context: Context, config=None):
         super().__init__(context)

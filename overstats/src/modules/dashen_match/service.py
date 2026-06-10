@@ -40,11 +40,14 @@ from .enhanced_render import (
 )
 from .render import (
     RenderedImage,
+    _extract_player_perks,
     _extract_match_detail_data,
     _find_hero,
     _find_map,
     _hero_icon_url,
     _load_ow_config,
+    _perk_guid_candidates,
+    _perk_lookup,
     _resolve_player_hero,
     _sort_players,
     render_match_detail,
@@ -784,6 +787,7 @@ class DashenMatchModule:
         player_details: Sequence[Dict[str, Any]] | None = None,
     ) -> None:
         config = _load_ow_config()
+        perk_lookup = _perk_lookup(config)
         urls: list[str] = []
 
         def add_url(value: Any) -> None:
@@ -806,6 +810,16 @@ class DashenMatchModule:
                 add_url(player.get(key))
             hero_info = _resolve_player_hero(config, player)
             add_url(_hero_icon_url(hero_info, player))
+            for perk in _extract_player_perks(player):
+                icon_url = ""
+                for candidate in _perk_guid_candidates(perk):
+                    perk_info = perk_lookup.get(candidate)
+                    if perk_info:
+                        icon_url = str(perk_info.get("icon") or "").strip()
+                        break
+                if not icon_url and isinstance(perk, dict):
+                    icon_url = str(perk.get("icon") or "").strip()
+                add_url(icon_url)
             for hero in player.get("heroList") or []:
                 if not isinstance(hero, dict):
                     continue
@@ -895,7 +909,7 @@ class DashenMatchModule:
     "match_quality": {score_bundle["match_quality"]}
   }},
   "evaluation": "基于四项属性分的针对性评价",
-  "extra": "100字以内的人格化鼓励/安慰/小结",
+  "extra": "200字以内的人格化小结，毒舌点评；语句犀利，可适当加入守望先锋梗和中文互联网梗，但必须基于本局数据",
   "carry_index_data": []
 }}
 

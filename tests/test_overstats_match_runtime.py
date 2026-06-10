@@ -4,7 +4,7 @@ import unittest
 import httpx
 
 from overstats.src.modules.dashen_match import service as match_service
-from overstats.src.modules.dashen_match.render import _load_ow_config
+from overstats.src.modules.dashen_match.render import _load_ow_config, _resolve_player_hero
 from overstats.src.modules.dashen_match.service import DashenMatchModule
 
 
@@ -22,27 +22,34 @@ class OverstatsMatchRuntimeTests(unittest.TestCase):
         async def run():
             config = _load_ow_config()
             map_info = next(item for item in config["mapList"] if item.get("icon"))
-            hero_info = next(item for item in config["heroList"] if item.get("smallIconUrl") or item.get("icon"))
+            hero_id, perks = next(
+                (hero_id, perks)
+                for hero_id, perks in config["heroPerkList"].items()
+                if isinstance(perks, list) and perks and perks[0].get("icon")
+            )
+            hero_info = next(item for item in config["heroList"] if item.get("id") == hero_id)
+            perk_info = perks[0]
             hero_url = hero_info.get("smallIconUrl") or hero_info.get("icon")
             fake_client = FakeDashenApiClient()
             module = DashenMatchModule(api_client=fake_client)
+            player = {
+                "name": "Player#12345",
+                "avatar": "https://example.com/avatar.png",
+                "perks": [{"id": perk_info["id"]}],
+            }
 
             await module._prefetch_match_render_images(
                 {
                     "mapGuid": map_info["guid"],
-                    "teammateList": [
-                        {
-                            "name": "Player#12345",
-                            "avatar": "https://example.com/avatar.png",
-                            "heroGuid": hero_info["heroGuid"],
-                        }
-                    ],
+                    "teammateList": [player],
                     "enemyList": [],
                 }
             )
 
+            self.assertEqual(_resolve_player_hero(config, player).get("heroGuid"), hero_info["heroGuid"])
             self.assertIn(map_info["icon"], fake_client.icon_urls)
             self.assertIn(hero_url, fake_client.icon_urls)
+            self.assertIn(perk_info["icon"], fake_client.icon_urls)
             self.assertIn("https://example.com/avatar.png", fake_client.icon_urls)
 
         asyncio.run(run())

@@ -700,11 +700,14 @@ def _draw_scoreboard_players(
         damage_taken = _safe_int(player.get("damageTaken"))
         healing_taken = _safe_int(player.get("healingTaken"))
         fleta_pct = (final_hit / (team_final_hit * 0.5) * 100) if team_final_hit > 0 else 0
-        draw.text((500, sub_y), f"F:{final_hit}", font=font_num_small, fill="lightgrey", anchor="ms")
-        draw.text((570, sub_y), target_time, font=font_num_small, fill="lightgrey", anchor="ms")
-        draw.text((750, sub_y), f"DT:{damage_taken:,}", font=font_num_small, fill="lightgrey", anchor="ms")
-        draw.text((870, sub_y), f"HT:{healing_taken:,}", font=font_num_small, fill="lightgrey", anchor="ms")
-        draw.text((1000, sub_y), f"FLETA:{fleta_pct:.2f}%", font=font_num_small, fill="lightgrey", anchor="ms")
+        for x, text, max_width in (
+            (500, f"终结:{final_hit}", 74),
+            (570, f"目标:{target_time}", 86),
+            (750, f"承伤:{damage_taken:,}", 118),
+            (870, f"受疗:{healing_taken:,}", 118),
+            (1000, f"收割:{fleta_pct:.2f}%", 118),
+        ):
+            draw.text((x, sub_y), _fit_text(draw, text, font_cn_sm, max_width), font=font_cn_sm, fill="lightgrey", anchor="ms")
 
         battletag, battlenum = _split_battletag(player)
         name_y = y + row_h * 0.35
@@ -1447,6 +1450,33 @@ def _resolve_player_hero(config: Dict[str, Any], player: Dict[str, Any]) -> Dict
             hero = _find_hero(config, raw)
             if hero:
                 return hero
+    hero = _resolve_hero_from_perks(config, player)
+    if hero:
+        return hero
+    return {}
+
+
+def _resolve_hero_from_perks(config: Dict[str, Any], player: Dict[str, Any]) -> Dict[str, Any]:
+    selected_perks = _extract_player_perks(player)
+    if not selected_perks:
+        return {}
+    selected_candidates: set[str] = set()
+    for perk in selected_perks:
+        selected_candidates.update(_perk_guid_candidates(perk))
+    if not selected_candidates:
+        return {}
+
+    groups = config.get("heroPerkList") or {}
+    if not isinstance(groups, dict):
+        return {}
+    for hero_id, perks in groups.items():
+        if not isinstance(perks, list):
+            continue
+        for perk in perks:
+            if not isinstance(perk, dict):
+                continue
+            if selected_candidates.intersection(_perk_guid_candidates(perk)):
+                return _find_hero(config, hero_id)
     return {}
 
 
