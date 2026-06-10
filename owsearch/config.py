@@ -94,12 +94,6 @@ class AiConfig:
     api_key: str = ""
     model: str = ""
     timeout_seconds: int = 60
-    temperature: float = 0.7
-    max_tokens: int = 1200
-    persona_prompt: str = (
-        "请保持客观中立，拒绝无脑奉承；如果焦点玩家表现拉胯请直接指出。"
-        "说话风格可带一点科比 meme：man! what can i say, mamba out。"
-    )
 
     @classmethod
     def from_mapping(cls, raw: Mapping[str, Any]) -> "AiConfig":
@@ -109,9 +103,6 @@ class AiConfig:
             api_key=str(_get(raw, "api_key", "") or "").strip(),
             model=str(_get(raw, "model", "") or "").strip(),
             timeout_seconds=max(10, _as_int(_get(raw, "timeout_seconds", 60), 60)),
-            temperature=_as_float(_get(raw, "temperature", 0.7), 0.7),
-            max_tokens=max(256, _as_int(_get(raw, "max_tokens", 1200), 1200)),
-            persona_prompt=str(_get(raw, "persona_prompt", cls.persona_prompt) or cls.persona_prompt).strip(),
         )
 
     @property
@@ -141,20 +132,10 @@ class RenderConfig:
 
 
 @dataclass(frozen=True)
-class OwGuessConfig:
-    asset_root: str = ""
-
-    @classmethod
-    def from_mapping(cls, raw: Mapping[str, Any]) -> "OwGuessConfig":
-        return cls(asset_root=str(_get(raw, "asset_root", "") or "").strip())
-
-
-@dataclass(frozen=True)
 class PluginConfig:
     dashen: DashenConfig = field(default_factory=DashenConfig)
     ai: AiConfig = field(default_factory=AiConfig)
     render: RenderConfig = field(default_factory=RenderConfig)
-    ow_guess: OwGuessConfig = field(default_factory=OwGuessConfig)
     storage_dir: str = "data"
     ow_esports_api_key: str = ""
     default_match_limit: int = 10
@@ -167,7 +148,6 @@ class PluginConfig:
             dashen=DashenConfig.from_mapping(_as_mapping(_get(raw, "dashen", {}))),
             ai=AiConfig.from_mapping(_as_mapping(_get(raw, "ai", {}))),
             render=RenderConfig.from_mapping(_as_mapping(_get(raw, "render", {}))),
-            ow_guess=OwGuessConfig.from_mapping(_as_mapping(_get(raw, "ow_guess", {}))),
             storage_dir=str(_get(raw, "storage_dir", "data") or "data").strip(),
             ow_esports_api_key=str(_get(raw, "ow_esports_api_key", "") or "").strip(),
             default_match_limit=max(3, min(20, _as_int(_get(raw, "default_match_limit", 10), 10))),

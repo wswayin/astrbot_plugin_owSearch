@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from .analysis import AnalysisResult
 from ..models import MatchDetail, MatchSummary, PlayerIdentity
 
 
@@ -114,19 +113,4 @@ def build_sample_match_detail() -> MatchDetail:
         payload=payload,
         source_match=source_match,
         match_kind="normal",
-    )
-
-
-def build_sample_analysis() -> AnalysisResult:
-    return AnalysisResult(
-        ok=True,
-        model="sample-model",
-        data={
-            "score": "A",
-            "verdict": "焦点玩家输出稳定，死亡控制不错，是本局主要推进点。",
-            "highlights": ["击杀效率高", "死亡控制干净", "关键输出压住敌方输出位"],
-            "problems": ["承伤略高", "治疗资源吃得偏多"],
-            "advice": ["继续保持站位纪律", "优势局少贪深追", "多和坦克同步节奏"],
-            "meme_line": "man! what can i say, mamba out。",
-        },
     )

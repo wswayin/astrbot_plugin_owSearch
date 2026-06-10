@@ -36,8 +36,6 @@ from overstats.src.modules.errors import ModuleError
 from overstats.src.modules.ow_hero_perk import OWHeroPerkModule, OWHeroPerkQuery
 from overstats.src.modules.ow_hero_pick_rate import OWHeroPickRateModule, OWHeroPickRateQuery
 from overstats.src.modules.ow_hero_wiki import OWHeroWikiModule, OWHeroWikiQuery
-from overstats.src.modules.ow_guess import OWGuessModule, OWGuessQuery
-from overstats.src.modules.ow_guess.catalog import OWGuessCatalog
 from overstats.src.modules.ow_shop import OWShopModule
 from overstats.src.modules.ow_esports import OWEsportsModule, OWEsportsRequests
 from overstats.src.modules.patch_notes import PatchNotesModule
@@ -46,12 +44,11 @@ from overstats.src.modules.player_identity_search import PlayerIdentitySearchMod
 from .config import PluginConfig
 from .errors import OwSearchError
 from .models import ReplyItem
-from .renderers import AudioConversionError, cleanup_render_dir, convert_audio_bytes_to_wav, save_image_bytes
+from .renderers import cleanup_render_dir, save_image_bytes
 
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
-AUDIO_SUFFIXES = {".wav", ".mp3", ".ogg", ".m4a", ".amr", ".flac", ".webm"}
-IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp"}
+ORIGINAL_ANALYSIS_PERSONA_PROMPT = str(getattr(overstats_config, "ANALYSIS_PERSONA_PROMPT", "") or "")
 
 
 class OverstatsBridge:
@@ -59,7 +56,6 @@ class OverstatsBridge:
         self.config = config
         self.data_dir = data_dir
         self.render_dir = data_dir / "renders"
-        self.guess_asset_root = self._resolve_ow_guess_asset_root(data_dir)
         self.client = self._build_client()
         self._patch_overstats_global_client()
         self.search_module = BnetSearchModule(self.client)
@@ -88,25 +84,6 @@ class OverstatsBridge:
         self.patch_notes_module = PatchNotesModule(cache_root=data_dir / "overstats_cache" / "patch_notes")
         self.esports_module = OWEsportsModule(requests=OWEsportsRequests(self.client))
         self.identity_search_module = PlayerIdentitySearchModule()
-        self.guess_module = OWGuessModule(catalog=OWGuessCatalog(resource_root=self.guess_asset_root))
-
-    def _resolve_ow_guess_asset_root(self, data_dir: Path) -> Path:
-        configured = str(self.config.ow_guess.asset_root or "").strip()
-        if configured:
-            path = Path(configured)
-            if not path.is_absolute():
-                path = PLUGIN_ROOT / path
-            return path.resolve()
-
-        candidates = (
-            data_dir / "ow_guess_assets",
-            PLUGIN_ROOT / "ow_guess_assets",
-            PLUGIN_ROOT / "overstats" / "ow_guess_assets",
-        )
-        for candidate in candidates:
-            if candidate.exists():
-                return candidate.resolve()
-        return (data_dir / "ow_guess_assets").resolve()
 
     def _build_client(self) -> DashenAPIClient:
         dashen = self.config.dashen
@@ -143,26 +120,8 @@ class OverstatsBridge:
         overstats_api.DASHEN_REFERER = str(dashen.referer or "https://act.ds.163.com/")
         overstats_api.DASHEN_USER_AGENT = str(dashen.user_agent or "")
         overstats_config.OW_ESPORTS_API_KEY = str(self.config.ow_esports_api_key or "")
-        overstats_config.OW_GUESS_ASSET_ROOT = str(self.guess_asset_root)
         overstats_api.OW_ESPORTS_API_KEY = str(self.config.ow_esports_api_key or "")
         overstats_api.OW_ESPORTS_HEADERS = overstats_api._build_ow_esports_headers(self.config.ow_esports_api_key)
-
-    def ow_guess_resource_status(self) -> dict[str, Any]:
-        root = self.guess_asset_root
-        return {
-            "root": str(root),
-            "exists": root.exists(),
-            "map_music_audio": self._count_files(root / "map_music" / "assets", AUDIO_SUFFIXES),
-            "ult_voice_audio": self._count_files(root / "ult_voice" / "assets", AUDIO_SUFFIXES),
-            "hero_icon_images": self._count_files(root / "shared" / "hero_icons", IMAGE_SUFFIXES, recursive=True),
-            "silhouette_background": (root / "hero_silhouette" / "whois_bg.jpg").exists(),
-        }
-
-    def _count_files(self, path: Path, suffixes: set[str], *, recursive: bool = False) -> int:
-        if not path.exists():
-            return 0
-        iterator = path.rglob("*") if recursive else path.iterdir()
-        return sum(1 for item in iterator if item.is_file() and item.suffix.lower() in suffixes)
 
     def _patch_overstats_global_client(self) -> None:
         overstats_api.dashen_api_client = self.client
@@ -184,7 +143,7 @@ class OverstatsBridge:
         ai = self.config.ai
         overstats_config.ANALYSIS_BASE_URL = str(ai.base_url or "")
         overstats_config.ANALYSIS_API_KEY = str(ai.api_key or "")
-        overstats_config.ANALYSIS_PERSONA_PROMPT = str(ai.persona_prompt or "")
+        overstats_config.ANALYSIS_PERSONA_PROMPT = ORIGINAL_ANALYSIS_PERSONA_PROMPT
         if ai.model:
             overstats_config.ANALYSIS_OPENAI_MODEL = ai.model
             overstats_config.ANALYSIS_DEEPSEEK_MODEL = ai.model
@@ -485,66 +444,6 @@ class OverstatsBridge:
             lines.append(f"{index}. {tag or '-'} / bnet_id={item.bnet_id} / {item.match_type}")
         return [ReplyItem.text("\n".join(lines))]
 
-    async def guess(self, question_type: str) -> list[ReplyItem]:
-        query = OWGuessQuery(question_type=question_type)
-        try:
-            output = await self.guess_module.query_guess_replies(query)
-        except ModuleError as exc:
-            raise self._ow_guess_error(exc) from exc
-
-        replies: list[ReplyItem] = []
-        for reply in output.replies:
-            kind = str(reply.get("type") or "").lower()
-            if kind == "text":
-                text = str(reply.get("data") or "").strip()
-                if text:
-                    replies.append(ReplyItem.text(text))
-                continue
-            if kind == "image":
-                encoded = str(reply.get("base64") or "")
-                if not encoded:
-                    continue
-                data = base64.b64decode(encoded)
-                rendered = RenderedImage(content=data, media_type=str(reply.get("media_type") or "image/png"))
-                replies.append(self._reply_item_from_rendered(rendered, prefix="overstats_guess"))
-                continue
-            if kind == "audio":
-                encoded = str(reply.get("base64") or "")
-                if not encoded:
-                    continue
-                data = base64.b64decode(encoded)
-                media_type = str(reply.get("media_type") or "application/octet-stream")
-                try:
-                    replies.append(self._reply_item_from_audio(data, media_type=media_type, prefix="overstats_guess_audio"))
-                except AudioConversionError as exc:
-                    replies.append(ReplyItem.text(f"音频转码失败：{exc}"))
-        return replies or [ReplyItem.text("没有生成 OW 猜题内容。")]
-
-    def _ow_guess_error(self, exc: ModuleError) -> OwSearchError:
-        details = dict(exc.details or {})
-        reason = str(details.get("reason") or "")
-        if reason == "local_asset_pack_missing" or "asset pack" in str(exc.message).lower():
-            missing_path = str(details.get("path") or self.guess_asset_root)
-            hint = (
-                f"当前资源目录：{self.guess_asset_root}\n"
-                f"缺少素材路径：{missing_path}\n"
-                "请把 Overstats 的 ow_guess_assets 资源包放到该目录，或在插件配置 ow_guess.asset_root 指向资源包根目录。"
-            )
-            return OwSearchError(
-                "OW 猜题资源包未安装或该题型素材不完整。",
-                hint,
-                code=exc.error,
-                details=details,
-            )
-        if exc.error == "ow_guess_invalid_type":
-            return OwSearchError(
-                "未知的 OW 猜题类型。",
-                "示例：/ow 猜 英雄图标、/ow 猜 地图音乐、/ow 猜 大招语音、/ow 猜 描述猜英雄",
-                code=exc.error,
-                details=details,
-            )
-        return OwSearchError(exc.message, exc.hint, code=exc.error, details=details)
-
     def _reply_item_from_rendered(self, rendered: RenderedImage, *, prefix: str) -> ReplyItem:
         saved = save_image_bytes(
             rendered.content,
@@ -554,16 +453,6 @@ class OverstatsBridge:
         )
         cleanup_render_dir(self.render_dir, max_files=self.config.render.max_render_files)
         return ReplyItem.image(str(saved.path), saved.media_type)
-
-    def _reply_item_from_audio(self, data: bytes, *, media_type: str, prefix: str) -> ReplyItem:
-        saved = convert_audio_bytes_to_wav(
-            data,
-            self.render_dir,
-            prefix=prefix,
-            media_type=media_type,
-        )
-        cleanup_render_dir(self.render_dir, max_files=self.config.render.max_render_files)
-        return ReplyItem.audio(str(saved.path), saved.media_type)
 
     def _reply_items_from_overstats(self, replies: list[dict[str, Any]], *, prefix: str) -> list[ReplyItem]:
         result: list[ReplyItem] = []

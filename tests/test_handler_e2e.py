@@ -6,116 +6,6 @@ from pathlib import Path
 from owsearch.cache.context import ContextKey
 from owsearch.commands.handler import OwCommandHandler
 from owsearch.config import PluginConfig
-from owsearch.models import MatchDetail, MatchSummary, PlayerIdentity
-from owsearch.services.analysis import AnalysisResult
-
-
-def sample_detail() -> MatchDetail:
-    identity = PlayerIdentity(
-        query="Player#12345",
-        full_id="Player#12345",
-        bnet_id="12345",
-        customer_token="customer-token",
-    )
-    source_match = {
-        "matchId": "match-1",
-        "matchRet": 1,
-        "gameMode": "SportPreset",
-        "beginTs": 1777212060658,
-        "teamScore": 3,
-        "opponentScore": 1,
-        "kill": 21,
-        "assist": 8,
-        "death": 3,
-        "heroDamage": 12800,
-        "cure": 0,
-        "resistDamage": 1200,
-        "roleType": "dps",
-    }
-    payload = {
-        "code": 0,
-        "success": True,
-        "data": {
-            "matchRet": 1,
-            "mapGuid": "map-1",
-            "gameTimeSec": 955,
-            "startTime": 1777212060,
-            "teamScore": 3,
-            "opponentScore": 1,
-            "teammateList": [
-                {
-                    "name": "Player#12345",
-                    "bnetId": "12345",
-                    "roleType": "dps",
-                    "kill": 21,
-                    "assist": 8,
-                    "death": 3,
-                    "heroDamage": 12800,
-                    "cure": 0,
-                    "resistDamage": 1200,
-                    "finalHit": 7,
-                    "damageTaken": 4300,
-                    "healingTaken": 2900,
-                    "rankInfo": {"rank_name": "Diamond", "rank_sub_tier": 2},
-                },
-                {
-                    "name": "Tank#1111",
-                    "bnetId": "1111",
-                    "roleType": "tank",
-                    "kill": 12,
-                    "assist": 13,
-                    "death": 4,
-                    "heroDamage": 7600,
-                    "cure": 0,
-                    "resistDamage": 15400,
-                },
-            ],
-            "enemyList": [
-                {
-                    "name": "Enemy#9999",
-                    "bnetId": "9999",
-                    "roleType": "dps",
-                    "kill": 16,
-                    "assist": 3,
-                    "death": 8,
-                    "heroDamage": 10100,
-                    "cure": 0,
-                    "resistDamage": 300,
-                }
-            ],
-        },
-    }
-    return MatchDetail(
-        identity=identity,
-        summary=MatchSummary.from_payload(source_match),
-        payload=payload,
-        source_match=source_match,
-        match_kind="normal",
-    )
-
-
-class FakeMatchService:
-    async def latest_analyzable_detail(self, bnet_id, *, context_key=None, index=1):
-        self.bnet_id = bnet_id
-        self.context_key = context_key
-        self.index = index
-        return sample_detail()
-
-
-class FakeAnalysisService:
-    async def analyze(self, detail):
-        return AnalysisResult(
-            ok=True,
-            model="fake-model",
-            data={
-                "score": "A",
-                "verdict": "焦点玩家输出稳定，死亡控制不错。",
-                "highlights": ["击杀效率高", "死亡少"],
-                "problems": ["承伤偏高"],
-                "advice": ["继续保持站位纪律"],
-                "meme_line": "man! what can i say, mamba out。",
-            },
-        )
 
 
 class FakeOverstatsBridge:
@@ -137,7 +27,6 @@ class FakeOverstatsBridge:
         self.question = ""
         self.history_limit = None
         self.patch_kind = ""
-        self.question_type = ""
         self.start_season = None
         self.end_season = None
 
@@ -235,10 +124,6 @@ class FakeOverstatsBridge:
         from owsearch.models import ReplyItem
 
         return [ReplyItem.text(f"identity {bnet_id} {limit}")]
-
-    async def guess(self, question_type):
-        self.question_type = question_type
-        return [MatchReplyFactory.image("guess")]
 
     async def close(self):
         return None
@@ -603,7 +488,7 @@ class HandlerE2ETests(unittest.TestCase):
 
         asyncio.run(run())
 
-    def test_ow_guess_uses_question_type(self):
+    def test_ow_guess_is_removed(self):
         async def run():
             with tempfile.TemporaryDirectory() as temp_dir:
                 handler = OwCommandHandler(PluginConfig.from_mapping({}), Path(temp_dir))
@@ -617,28 +502,18 @@ class HandlerE2ETests(unittest.TestCase):
                 finally:
                     await handler.close()
 
-                self.assertEqual(fake_bridge.question_type, "英雄图标")
-                self.assertEqual([reply.kind for reply in replies], ["image"])
+                self.assertEqual([reply.kind for reply in replies], ["text"])
+                self.assertIn("守望查询", replies[0].content)
 
         asyncio.run(run())
 
     def test_debug_config_does_not_leak_secret_values(self):
         async def run():
             with tempfile.TemporaryDirectory() as temp_dir:
-                asset_root = Path(temp_dir) / "ow_guess_assets"
-                (asset_root / "map_music" / "assets").mkdir(parents=True)
-                (asset_root / "ult_voice" / "assets").mkdir(parents=True)
-                (asset_root / "shared" / "hero_icons" / "安娜" / "Abilities").mkdir(parents=True)
-                (asset_root / "hero_silhouette").mkdir(parents=True)
-                (asset_root / "map_music" / "assets" / "map.ogg").write_bytes(b"audio")
-                (asset_root / "ult_voice" / "assets" / "ult.ogg").write_bytes(b"audio")
-                (asset_root / "shared" / "hero_icons" / "安娜" / "Abilities" / "skill.png").write_bytes(b"image")
-                (asset_root / "hero_silhouette" / "whois_bg.jpg").write_bytes(b"image")
                 config = PluginConfig.from_mapping(
                     {
                         "dashen": {"role_id": 123, "token": "secret-token"},
                         "ai": {"enabled": True, "base_url": "https://example.com/v1", "api_key": "secret-key"},
-                        "ow_guess": {"asset_root": str(asset_root)},
                         "ow_esports_api_key": "secret-esports-key",
                     }
                 )
@@ -651,11 +526,9 @@ class HandlerE2ETests(unittest.TestCase):
                 self.assertIn("Dashen token：已填", text)
                 self.assertIn("AI：已启用", text)
                 self.assertIn("电竞 API key：已填", text)
-                self.assertIn(f"猜题资源目录：{asset_root}", text)
-                self.assertIn("猜题资源：已发现", text)
-                self.assertIn("猜题音频：地图音乐 1 / 大招语音 1", text)
-                self.assertIn("猜题图标：1 / 剪影背景 已找到", text)
                 self.assertIn("图片保留：300 张", text)
+                self.assertIn("正式图片渲染：Overstats 原版", text)
+                self.assertIn("debug 图片：Overstats 原版开庭渲染", text)
                 self.assertNotIn("secret-token", text)
                 self.assertNotIn("secret-key", text)
                 self.assertNotIn("secret-esports-key", text)
@@ -689,7 +562,28 @@ class HandlerE2ETests(unittest.TestCase):
 
         asyncio.run(run())
 
-    def test_debug_render_returns_three_images(self):
+    def test_debug_render_uses_overstats_courtroom(self):
+        async def run():
+            with tempfile.TemporaryDirectory() as temp_dir:
+                handler = OwCommandHandler(PluginConfig.from_mapping({}), Path(temp_dir))
+                fake_bridge = FakeOverstatsBridge()
+                handler.overstats_bridge = fake_bridge
+                try:
+                    replies = await handler.handle("/ow debug 图片 Player#12345 2", ContextKey("test", "room", "user"))
+                finally:
+                    await handler.close()
+
+                self.assertEqual(fake_bridge.bnet_id, "Player#12345")
+                self.assertEqual(fake_bridge.index, 2)
+                self.assertEqual([reply.kind for reply in replies], ["image", "image", "image"])
+                for reply in replies:
+                    path = Path(reply.path)
+                    self.assertTrue(path.exists())
+                    self.assertGreater(path.stat().st_size, 1000)
+
+        asyncio.run(run())
+
+    def test_debug_render_requires_player_id(self):
         async def run():
             with tempfile.TemporaryDirectory() as temp_dir:
                 handler = OwCommandHandler(PluginConfig.from_mapping({}), Path(temp_dir))
@@ -698,11 +592,8 @@ class HandlerE2ETests(unittest.TestCase):
                 finally:
                     await handler.close()
 
-                self.assertEqual([reply.kind for reply in replies], ["image", "image", "image"])
-                for reply in replies:
-                    path = Path(reply.path)
-                    self.assertTrue(path.exists())
-                    self.assertGreater(path.stat().st_size, 1000)
+                self.assertEqual(replies[0].kind, "text")
+                self.assertIn("缺少玩家守望 ID", replies[0].content)
 
         asyncio.run(run())
 

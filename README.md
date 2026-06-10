@@ -2,12 +2,12 @@
 
 AstrBot 守望先锋查询插件，参考 [AddOneSecondL/Overstats](https://github.com/AddOneSecondL/Overstats) 的 Dashen 数据链路实现。
 
-## v0.3.0 更新
+## v0.3.1 更新
 
-- 全面迁移 Overstats 非 Web 核心能力，保留原版 Dashen 数据、渲染、AI 分析、总结、榜单、英雄公共数据、商店、补丁、电竞和 OW 猜题链路。
+- 全面迁移 Overstats 非 Web 核心能力，保留原版 Dashen 数据、渲染、AI 分析、总结、榜单、英雄公共数据、商店、补丁和电竞链路。
 - 新增 AstrBot LLM 工具函数，让 AstrBot 根据自然语言选择可调用工具；插件不再内置原版 `auto_route` 自行请求 AI 的路由逻辑。
-- 新增 OW 猜题音频桥接，`mp3/ogg` 会转码为 AstrBot `Record` 支持的 16kHz 单声道 wav。
-- 新增 `ow_guess.asset_root` 资源包配置和 `/ow debug 配置` 资源状态诊断。
+- 正式查询图片和 `/ow debug 图片 玩家#12345` 强制走 Overstats 原版渲染。
+- 移除 OW 猜题模块和音频转码依赖。
 - 继续使用 `Pillow>=10,<13`，避免与 AstrBot 核心依赖保护冲突。
 
 ## 功能
@@ -25,7 +25,6 @@ AstrBot 守望先锋查询插件，参考 [AddOneSecondL/Overstats](https://gith
 - 提供 `/ow 登场率`、`/ow 威能 安娜`、`/ow 英雄资料 安娜` 查询原版英雄公共数据图
 - 提供 `/ow 商店`、`/ow 补丁 最新`、`/ow 电竞` 查询商店、补丁和电竞赛程
 - 提供 `/ow 反查 123456789` 查询本地记录中的 bnetId 对应 BattleTag
-- 提供 `/ow 猜 英雄图标` 接入原版 OW 猜题；图片、文字题型可直接回复，音频题型会转码为 AstrBot 可发送的 wav 语音
 - 提供联调命令，方便定位 Dashen 凭据、接口、渲染、AI 的问题
 
 ## 依赖
@@ -36,10 +35,7 @@ Python 3.11+。
 httpx>=0.27,<1
 Pillow>=10,<13
 tzdata>=2024.1
-imageio-ffmpeg>=0.4.9,<1
 ```
-
-音频猜题会优先使用系统 `ffmpeg`，找不到时使用 `imageio-ffmpeg` 提供的 ffmpeg。也可以通过环境变量 `OWSEARCH_FFMPEG_PATH` 指定 ffmpeg 可执行文件路径。
 
 Linux/Docker 环境建议安装中文字体，否则图片里的中文可能显示为方框：
 
@@ -85,30 +81,11 @@ python -m owsearch.self_check
 
 `/ow 电竞` 需要配置 `ow_esports_api_key`，使用 PandaScore OW 赛事 API Key。未填写时只会提示未配置，不影响其他查询。
 
-`/ow 猜` 的 `questions.json` 已内置；音频、技能图标、威能图标、剪影背景等大体积素材需要单独放置 `ow_guess_assets` 资源包。默认会查找：
-
-```text
-data/ow_guess_assets
-ow_guess_assets
-overstats/ow_guess_assets
-```
-
-也可以在插件配置里填写 `ow_guess.asset_root` 指向资源包根目录。资源包常见结构如下：
-
-```text
-ow_guess_assets/
-  map_music/assets/*.mp3|*.ogg
-  ult_voice/assets/*.ogg
-  shared/hero_icons/<英雄>/Abilities/*.png
-  shared/hero_icons/<英雄>/Perks/*.png
-  hero_silhouette/whois_bg.jpg
-```
-
-`/ow debug 配置` 会显示当前资源目录、地图音乐/大招语音数量、英雄图标数量和剪影背景状态。
-
 ## AI 分析
 
 原版 Overstats 的 AI 锐评模块是 OpenAI-compatible 调用，需要自己配置 API，不是调用网易大神 AI。
+本插件的单局 AI 提示词、JSON schema 和 AI 分析图布局均直接使用 Overstats 原版
+`dashen_match.service._build_ai_analysis` 与 `dashen_match.enhanced_render.render_analysis_report`。
 
 本插件同样使用：
 
@@ -160,13 +137,10 @@ model = deepseek-chat
 /ow 补丁 最新
 /ow 电竞
 /ow 反查 123456789 10
-/ow 猜 英雄图标
-/ow 猜 地图音乐
-/ow 猜 大招语音
 /ow 刷新 玩家#12345
 /ow debug 配置
 /ow debug ai
-/ow debug 图片
+/ow debug 图片 玩家#12345
 /ow debug 接口 玩家#12345 5
 /ow debug 战绩 玩家#12345 5
 ```
@@ -199,8 +173,7 @@ model = deepseek-chat
 - `/ow 补丁 最新`：查询补丁说明；类型支持最新/小补丁/大补丁
 - `/ow 电竞`：查询 OW 电竞赛程，需要 `ow_esports_api_key`
 - `/ow 反查 123456789 10`：从本地 SQLite 记录反查 BattleTag；是否有结果取决于本地是否积累过对应记录
-- `/ow 猜 英雄图标`：生成一题 OW 猜题；支持英雄图标、技能图标、威能图标、地图图片、剪影、描述猜英雄等图片/文字题型
-- `/ow 猜 地图音乐`、`/ow 猜 大招语音`：音频题型会先转码为 16kHz 单声道 wav，再通过 AstrBot `Record` 语音组件发送；需要补齐 Overstats 的 `ow_guess_assets` 音频资源包
+- `/ow debug 图片 玩家#12345`：使用 Overstats 原版开庭渲染测试图片链路，返回内容与 `/ow 开庭 玩家#12345` 同源
 
 ## AstrBot LLM 工具
 
@@ -227,7 +200,6 @@ ow_hero_wiki
 ow_shop
 ow_patch_notes
 ow_esports
-ow_guess
 ```
 
 ## 联调顺序
@@ -236,12 +208,12 @@ ow_guess
 
 1. `/ow debug 配置`
 2. `/ow debug ai`
-3. `/ow debug 图片`
+3. `/ow debug 图片 玩家#12345`
 4. `/ow debug 接口 玩家#12345 5`
 5. `/ow debug 战绩 玩家#12345 5`
 6. `/ow 开庭 玩家#12345`
 
-`/ow debug ai` 只检查配置是否完整，不会真实请求模型。`/ow debug 接口` 会标记每一步 `[OK]` / `[FAIL]`。如果失败在 `searchBnetAccount`，优先检查 Dashen 凭据和 BattleTag；如果失败在 `queryMatchList` 或 `queryMatchInfo`，优先确认玩家公开战绩、token 是否过期、接口是否限流；如果只失败在 AI 阶段，Dashen 数据链路通常已经可用。
+`/ow debug ai` 只检查配置是否完整，不会真实请求模型。`/ow debug 图片 玩家#12345` 会真实调用 Overstats 原版渲染链路。`/ow debug 接口` 会标记每一步 `[OK]` / `[FAIL]`。如果失败在 `searchBnetAccount`，优先检查 Dashen 凭据和 BattleTag；如果失败在 `queryMatchList` 或 `queryMatchInfo`，优先确认玩家公开战绩、token 是否过期、接口是否限流；如果只失败在 AI 阶段，Dashen 数据链路通常已经可用。
 
 ## 数据说明
 

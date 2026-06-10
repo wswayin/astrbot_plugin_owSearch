@@ -157,10 +157,9 @@ class RouterTests(unittest.TestCase):
         self.assertEqual(intent.bnet_id, "123456789")
         self.assertEqual(intent.limit, 10)
 
-    def test_ow_guess(self):
+    def test_ow_guess_is_removed(self):
         intent = parse_command("/ow 猜 英雄图标")
-        self.assertEqual(intent.name, "ow_guess")
-        self.assertEqual(intent.question_type, "英雄图标")
+        self.assertEqual(intent.name, "help")
 
     def test_context_detail_index(self):
         intent = parse_command("/ow 详情 2")
@@ -203,8 +202,10 @@ class RouterTests(unittest.TestCase):
         self.assertEqual(intent.limit, 4)
 
     def test_debug_render(self):
-        intent = parse_command("/ow debug 图片")
+        intent = parse_command("/ow debug 图片 Player#12345 2")
         self.assertEqual(intent.name, "debug_render")
+        self.assertEqual(intent.bnet_id, "Player#12345")
+        self.assertEqual(intent.index, 2)
 
     def test_match_list_limit(self):
         intent = parse_command("/ow 战绩 Player#12345 12")

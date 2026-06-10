@@ -10,26 +10,13 @@ from ..cache.context import ContextKey
 from ..clients import DashenClient
 from ..config import PluginConfig
 from ..errors import OwSearchError
-from ..models import MatchDetail, ReplyItem
+from ..models import ReplyItem
 from ..overstats_bridge import OverstatsBridge
-from ..renderers import (
-    render_all_players_image,
-    render_analysis_image,
-    render_match_detail_image,
-    render_match_list_image,
-    render_profile_image,
-    cleanup_render_dir,
-    save_image,
-)
 from ..renderers.fonts import font_diagnostics
-from ..renderers.text_fallback import detail_text, match_list_text, profile_text
 from ..router import parse_command
 from ..router.intents import CommandIntent
-from ..services.analysis import AnalysisService
 from ..services.identity import IdentityService
 from ..services.match import MatchService
-from ..services.profile import ProfileService
-from ..services.sample_data import build_sample_analysis, build_sample_match_detail
 from ..utils.sanitize import redact
 from .help import HELP_TEXT
 
@@ -40,16 +27,13 @@ class OwCommandHandler:
     def __init__(self, config: PluginConfig, data_dir: Path) -> None:
         self.config = config
         self.data_dir = data_dir
-        self.render_dir = data_dir / "renders"
         self.cache_dir = data_dir / "cache"
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.client = DashenClient(config.dashen)
         self.context_cache = ContextCache()
         self.identity_store = IdentityStore(self.cache_dir / "identity_store.json")
         self.identity_service = IdentityService(self.client, self.identity_store)
-        self.profile_service = ProfileService(self.client, self.identity_service)
         self.match_service = MatchService(self.client, self.identity_service, self.context_cache)
-        self.analysis_service = AnalysisService(config.ai)
         self.overstats_bridge = OverstatsBridge(config, data_dir)
         self._owned_overstats_bridge = self.overstats_bridge
 
@@ -119,8 +103,6 @@ class OwCommandHandler:
             return await self._esports()
         if intent.name == "identity_search":
             return await self._identity_search(intent)
-        if intent.name == "ow_guess":
-            return await self._ow_guess(intent)
         if intent.name == "analysis":
             return await self._match_detail(intent, context_key, force_analysis=True)
         if intent.name == "courtroom":
@@ -136,7 +118,7 @@ class OwCommandHandler:
         if intent.name == "debug_live":
             return await self._debug_live(intent, context_key)
         if intent.name == "debug_render":
-            return await self._debug_render()
+            return await self._debug_render(intent)
         return [ReplyItem.text(HELP_TEXT)]
 
     def _require_bnet(self, intent: CommandIntent) -> str:
@@ -171,11 +153,6 @@ class OwCommandHandler:
         if not hero:
             raise OwSearchError("缺少英雄名称。", example, code="missing_hero")
         return hero
-
-    def _save(self, image, prefix: str) -> ReplyItem:
-        saved = save_image(image, self.render_dir, prefix=prefix, max_bytes=self.config.render.max_bytes)
-        cleanup_render_dir(self.render_dir, max_files=self.config.render.max_render_files)
-        return ReplyItem.image(str(saved.path), saved.media_type)
 
     async def _profile(self, intent: CommandIntent) -> list[ReplyItem]:
         bnet_id = self._require_bnet(intent)
@@ -230,25 +207,11 @@ class OwCommandHandler:
                     analyze=analyze,
                     include_fight=self.config.dashen.include_fight,
                 )
-        detail = await self._resolve_detail(intent, context_key)
-        replies: list[ReplyItem] = []
-        try:
-            replies.append(self._save(render_match_detail_image(detail, font_paths=self.config.render.font_paths), "match_detail"))
-            if show_all and detail.match_kind != "fight":
-                replies.append(self._save(render_all_players_image(detail, font_paths=self.config.render.font_paths), "match_players"))
-            if analyze:
-                analysis = await self.analysis_service.analyze(detail)
-                replies.append(
-                    self._save(
-                        render_analysis_image(detail, analysis, font_paths=self.config.render.font_paths),
-                        "match_analysis",
-                    )
-                )
-            if analyze and detail.match_kind == "fight":
-                replies.append(ReplyItem.text("角斗对局暂不支持全员数据，AI 只能基于主战绩摘要分析。"))
-            return replies
-        except Exception:
-            return [ReplyItem.text(detail_text(detail))]
+        raise OwSearchError(
+            "当前没有可用的 Overstats 对局上下文。",
+            "请先发送 /ow 战绩 Player#12345 建立列表上下文，或直接使用 /ow 详情 Player#12345 1。",
+            code="missing_overstats_context",
+        )
 
     async def _sameplay_list(self, intent: CommandIntent, context_key: ContextKey) -> list[ReplyItem]:
         player1, player2 = self._require_bnet_pair(intent)
@@ -343,24 +306,6 @@ class OwCommandHandler:
             raise OwSearchError("缺少 bnet_id。", "示例：/ow 反查 123456789", code="missing_bnet_id")
         return await self.overstats_bridge.identity_search(bnet_id, limit=intent.limit or 10)
 
-    async def _ow_guess(self, intent: CommandIntent) -> list[ReplyItem]:
-        question_type = str(intent.question_type or "").strip()
-        if not question_type:
-            raise OwSearchError("缺少猜题类型。", "示例：/ow 猜 英雄图标", code="missing_guess_type")
-        return await self.overstats_bridge.guess(question_type)
-
-    async def _resolve_detail(self, intent: CommandIntent, context_key: ContextKey) -> MatchDetail:
-        if intent.bnet_id:
-            return await self.match_service.detail_for_bnet_selector(
-                intent.bnet_id,
-                index=intent.index,
-                selector=intent.selector,
-                include_fight=self.config.dashen.include_fight,
-            )
-        if intent.index is not None:
-            return await self.match_service.detail_by_context_index(context_key, intent.index)
-        raise OwSearchError("缺少单局选择。", "示例：/ow 详情 1 或 /ow 详情 Player#12345 1", code="missing_match_selector")
-
     async def _courtroom(self, intent: CommandIntent, context_key: ContextKey) -> list[ReplyItem]:
         bnet_id = self._require_bnet(intent)
         return await self.overstats_bridge.courtroom(bnet_id, index=intent.index or 1)
@@ -445,32 +390,22 @@ class OwCommandHandler:
             return [ReplyItem.text("\n".join(lines))]
         lines.append(f"详情：match_kind={detail.match_kind} / data_keys={len(detail.data.keys())}")
 
-        if self.config.ai.ready:
-            analysis, ai_ok = await timed("AI analysis", lambda: self.analysis_service.analyze(detail))
-            if analysis is not None:
-                lines.append(f"AI：{'成功' if analysis.ok else '失败'} / model={analysis.model or '-'}")
-            if not ai_ok:
-                lines.append("AI 阶段失败不影响 Dashen 数据链路。")
-        else:
-            lines.append("[SKIP] AI analysis: 未启用或未配置")
+        lines.append(
+            "AI：正式分析由 Overstats 原版 _build_ai_analysis 与 render_analysis_report 处理；"
+            f"当前配置 {'已就绪' if self.config.ai.ready else '未就绪'}。"
+        )
 
         lines.append(f"总耗时：{int((perf_counter() - total_started) * 1000)} ms")
         return [ReplyItem.text("\n".join(lines))]
 
-    async def _debug_render(self) -> list[ReplyItem]:
-        detail = build_sample_match_detail()
-        analysis = build_sample_analysis()
-        return [
-            self._save(render_match_detail_image(detail, font_paths=self.config.render.font_paths), "debug_result"),
-            self._save(render_all_players_image(detail, font_paths=self.config.render.font_paths), "debug_players"),
-            self._save(render_analysis_image(detail, analysis, font_paths=self.config.render.font_paths), "debug_analysis"),
-        ]
+    async def _debug_render(self, intent: CommandIntent) -> list[ReplyItem]:
+        bnet_id = self._require_bnet(intent)
+        return await self.overstats_bridge.courtroom(bnet_id, index=intent.index or 1)
 
     def _debug_config_text(self) -> str:
         dashen = self.config.dashen
         ai = self.config.ai
         fonts = font_diagnostics(self.config.render.font_paths)
-        guess_resources = self.overstats_bridge.ow_guess_resource_status()
         lines = [
             "OW 查询配置检查：",
             f"Dashen role_id：{'已填' if dashen.role_id > 0 else '未填'}",
@@ -481,13 +416,13 @@ class OwCommandHandler:
             f"AI：{'已启用' if ai.ready else '未启用或未配置'}",
             f"AI base_url：{'已填' if ai.base_url else '未填'}",
             f"AI model：{ai.model or '自动推断'}",
+            "AI 提示词：Overstats 原版",
+            "AI 图片布局：Overstats 原版 render_analysis_report",
             f"电竞 API key：{'已填' if self.config.ow_esports_api_key else '未填'}",
             f"图片上限：{self.config.render.max_bytes} bytes",
             f"图片保留：{self.config.render.max_render_files} 张",
-            f"猜题资源目录：{guess_resources['root']}",
-            f"猜题资源：{'已发现' if guess_resources['exists'] else '未安装'}",
-            f"猜题音频：地图音乐 {guess_resources['map_music_audio']} / 大招语音 {guess_resources['ult_voice_audio']}",
-            f"猜题图标：{guess_resources['hero_icon_images']} / 剪影背景 {'已找到' if guess_resources['silhouette_background'] else '未找到'}",
+            "正式图片渲染：Overstats 原版",
+            "debug 图片：Overstats 原版开庭渲染",
             f"中文字体：{'已找到' if fonts['cjk_ready'] else '未确认'}",
             f"常规字体：{fonts['regular'] or '-'}",
             f"粗体字体：{fonts['bold'] or '-'}",
@@ -514,8 +449,8 @@ class OwCommandHandler:
             f"provider：{provider}",
             f"model：{model}",
             f"timeout：{ai.timeout_seconds} 秒",
-            f"temperature：{ai.temperature}",
-            f"persona：{'已填' if ai.persona_prompt else '未填'}",
+            "提示词：Overstats 原版 _build_ai_analysis",
+            "图片布局：Overstats 原版 render_analysis_report",
             f"可用状态：{'可用' if ai.ready else '不可用'}",
         ]
         return "\n".join(lines)

@@ -19,10 +19,6 @@ if not hasattr(filter, "llm_tool"):
         return decorator
 
     filter.llm_tool = _noop_llm_tool
-try:
-    import astrbot.api.message_components as Comp
-except ImportError:  # pragma: no cover - depends on AstrBot runtime version.
-    Comp = None
 from astrbot.api.star import Context, Star, register
 
 from owsearch.commands.handler import OwCommandHandler
@@ -31,7 +27,7 @@ from owsearch.config import PluginConfig
 from owsearch.models import ReplyItem
 
 
-@register("astrbot_plugin_owSearch", "wswayin", "Overwatch player and match search through Dashen data.", "0.3.0")
+@register("astrbot_plugin_owSearch", "wswayin", "Overwatch player and match search through Dashen data.", "0.3.1")
 class OwSearchPlugin(Star):
     def __init__(self, context: Context, config=None):
         super().__init__(context)
@@ -64,18 +60,6 @@ class OwSearchPlugin(Star):
     def _to_astrbot_result(self, event: AstrMessageEvent, reply: ReplyItem):
         if reply.kind == "image" and reply.path:
             return event.image_result(reply.path)
-        if reply.kind == "audio" and reply.path:
-            if Comp is None or not hasattr(Comp, "Record") or not hasattr(event, "chain_result"):
-                return event.plain_result(f"音频已生成但当前 AstrBot 环境不支持 Record 语音组件：{reply.path}")
-            try:
-                record_cls = Comp.Record
-                if hasattr(record_cls, "fromFileSystem"):
-                    record = record_cls.fromFileSystem(reply.path)
-                else:
-                    record = record_cls(file=reply.path, url=reply.path)
-                return event.chain_result([record])
-            except Exception as exc:
-                return event.plain_result(f"音频已生成但发送失败：{type(exc).__name__}: {exc}")
         return event.plain_result(reply.content)
 
     def _reply_results(self, event: AstrMessageEvent, replies: list[ReplyItem]):
@@ -356,17 +340,6 @@ class OwSearchPlugin(Star):
     async def ow_esports(self, event: AstrMessageEvent):
         '''查询守望先锋电竞赛程图。'''
         replies = await self.handler.overstats_bridge.esports()
-        for result in self._reply_results(event, replies):
-            yield result
-
-    @filter.llm_tool(name="ow_guess")
-    async def ow_guess(self, event: AstrMessageEvent, question_type: str):
-        '''生成一题守望先锋猜题，支持图片、文字和音频题型。
-
-        Args:
-            question_type(string): 猜题类型，例如 英雄图标、地图音乐、大招语音、描述猜英雄。
-        '''
-        replies = await self.handler.overstats_bridge.guess(question_type)
         for result in self._reply_results(event, replies):
             yield result
 

@@ -34,8 +34,8 @@ Overstats 的 `THIRD_PARTY_NOTICES.md` 明确说明 `res/` 下的图片、字体
 AstrBot command layer
   -> owsearch.overstats_bridge
   -> vendored overstats core modules
-  -> Dashen / AI / Pillow render / ffmpeg audio transcode
-  -> AstrBot ReplyItem image/text/audio
+  -> Dashen / AI / Pillow render
+  -> AstrBot ReplyItem image/text
 ```
 
 ## 阶段计划
@@ -46,7 +46,7 @@ AstrBot command layer
 - [x] 将非 Web 核心复制进插件内置 `overstats/` 包
 - [x] 保留第三方资源说明
 - [x] 建立 `owsearch.overstats_bridge`，把插件配置注入 Overstats runtime
-- [x] 添加渲染结果到 AstrBot 图片/音频回复的转换
+- [x] 添加渲染结果到 AstrBot 图片回复的转换
 
 ### Phase 2: 核心命令复刻
 
@@ -85,13 +85,12 @@ AstrBot command layer
 - [x] `ow_hero_leaderboard` 作为 `ow_hero_pick_rate` 的本地数据同步支撑模块保留
 - [x] `player_identity_search`
 - [x] `auto_route` 替代方案：注册 AstrBot LLM 工具函数，由 AstrBot 判断自然语言应调用哪个工具
-- [x] `ow_guess` 图片/文字/音频回复桥接；音频统一转码为 AstrBot `Record` 支持的 wav
-- [x] `ow_guess` 可选资源包策略：配置 `ow_guess.asset_root`，默认自动查找常见目录，debug 输出资源状态
+- [x] 按用户要求移除 `ow_guess` 猜题模块、音频转码桥接和 `ow_guess.asset_root` 配置
 
 ### Phase 5: 发布
 
 - [x] 全量测试与自检
-- [x] README 更新为 v0.3.0 说明
+- [x] README 更新为 v0.3.1 说明
 - [x] metadata/version 升级
 - [x] commit author 使用 `wswayin`
 - [x] tag 并推送
@@ -104,7 +103,7 @@ AstrBot command layer
 - 2026-06-10：创建本计划文档。
 - 2026-06-10：复制 Overstats 非 Web 核心到插件内置 `overstats/` 包，排除 `src/server.py` 与 `src/http_server/`。
 - 2026-06-10：新增 `owsearch.overstats_bridge`，完成 Overstats image/text replies 到 AstrBot `ReplyItem` 的转换。
-- 2026-06-10：确认 AstrBot 语音发送走 `message_components.Record`，并新增 Overstats `audio` reply 到 `ReplyItem.audio` 的桥接；`mp3/ogg` 等音频会通过 ffmpeg 转码为 16kHz 单声道 wav 后发送。
+- 2026-06-10：曾确认 AstrBot 语音发送走 `message_components.Record` 并实现音频桥接；后续按用户要求删除猜题模块，因此音频桥接不再保留。
 - 2026-06-10：`/ow 战绩`、`/ow 详情 玩家#12345 1`、`/ow 1/1*/1**`、`/ow 开庭 玩家#12345 [n]` 切到原版 `dashen_match` 渲染/AI 管线。
 - 2026-06-10：`/ow 资料 玩家#12345` 切到原版 `dashen_profile` 渲染。
 - 2026-06-10：AI 请求切换到原版 `_build_ai_analysis`；补充 HTTP 400/401/403/429 等错误响应摘要，便于定位模型/参数/key 问题。
@@ -126,14 +125,16 @@ AstrBot command layer
 - 2026-06-10：补齐 `/ow debug ai`，只做 AI 配置诊断与脱敏展示，不真实请求模型。
 - 2026-06-10：补齐 `player_identity_search`：`/ow 反查 bnet_id [limit]`，从本地 SQLite 身份记录反查 BattleTag。
 - 2026-06-10：身份反查迁移后单元测试 `63 tests OK`，自检 `result: OK`。
-- 2026-06-10：补齐 `ow_guess` 音频桥接：Overstats `audio` base64 保存后通过 ffmpeg 转码为 16kHz 单声道 wav，再用 AstrBot `Record` 发送；单元测试 `69 tests OK`，自检 `result: OK`，真实小样本转码通过。
-- 2026-06-10：补齐 `ow_guess` 资源包策略：新增 `ow_guess.asset_root` 配置、默认目录探测、`/ow debug 配置` 资源状态展示，以及缺资源时的中文可操作提示。
-- 2026-06-10：资源包策略补齐后单元测试 `70 tests OK`，自检 `result: OK`。
+- 2026-06-10：曾补齐 `ow_guess` 音频桥接和资源包策略；后续按用户要求删除，相关命令、配置、依赖和资源目录均移除。
 - 2026-06-10：按用户决策放弃插件内置 `auto_route` 自行请求 AI 的方案，改为注册 AstrBot `llm_tool` 工具函数；插件只提供白名单工具，工具选择交给 AstrBot。
 - 2026-06-10：AstrBot LLM 工具层接入后单元测试 `71 tests OK`，自检 `result: OK`。
 - 2026-06-10：发布准备阶段将插件版本升级到 v0.3.0，并在 README 补充本版迁移摘要。
 - 2026-06-10：发布前验收通过：`71 tests OK`、`owsearch.self_check result: OK`；确认 `overstats/src/server.py` 与 `overstats/src/http_server/` 未打包，且无 web server 引用残留。
 - 2026-06-10：推送前一度出现 GitHub HTTPS TLS 握手失败，`gh` keyring token 失效，SSH 443 可连通但当前机器没有可用 GitHub 公钥；随后 HTTPS push 恢复，`main` 与 `v0.3.0` tag 已推送到 GitHub。
+- 2026-06-10：按用户反馈调整：正式详情/分析/快捷命令不再落回插件自研图片渲染；缺少 Overstats 上下文时直接提示先查 `/ow 战绩 玩家#12345` 或使用 `/ow 详情 玩家#12345 1`。`/ow debug 图片 玩家#12345 [n]` 改为调用 Overstats 原版开庭渲染。
+- 2026-06-10：按用户要求删除猜题模块：移除 `/ow 猜`、`ow_guess` LLM 工具、`ow_guess.asset_root` 配置、音频转码依赖、vendored `overstats/src/modules/ow_guess` 和 `overstats/res/ow_guess`。
+- 2026-06-10：AI 分析提示词与布局固定为 Overstats 原版 `_build_ai_analysis` / `render_analysis_report`，移除插件本地 AI 分析服务与本地 AI 分析图导出。
+- 2026-06-10：本轮调整版本号升级到 v0.3.1，便于区分 v0.3.0 已发布版本。
 
 ## 交接
 
@@ -153,7 +154,7 @@ python -B -m owsearch.self_check
 验收优先级：
 
 1. `/ow debug 配置` 不泄露敏感信息。
-2. `/ow debug 图片` 能生成原版风格样例图。
+2. `/ow debug 图片 玩家#12345` 能调用 Overstats 原版开庭渲染。
 3. `/ow 战绩 玩家#12345 10` 能返回原版列表图。
 4. `/ow 开庭 玩家#12345` 能返回主战绩图、全员瀑布图、AI 图或明确 AI 错误文本。
 5. `/ow 同玩 A#12345 B#67890` 能返回原版同玩列表图，列表后 `/ow 1**` 能返回同玩详情、全员瀑布图与 AI 图或明确 AI 错误文本。
@@ -164,4 +165,3 @@ python -B -m owsearch.self_check
 10. `/ow 商店`、`/ow 补丁 最新`、`/ow 电竞` 能返回原版公共数据图；电竞需要配置 `ow_esports_api_key`。
 11. `/ow 英雄占比 玩家#12345` 能返回原版英雄使用占比树图。
 12. `/ow debug ai` 不泄露 AI key；`/ow 反查 123456789` 能返回本地身份匹配或明确未找到。
-13. `/ow 猜 地图音乐`、`/ow 猜 大招语音` 在资源包存在时能返回 AstrBot 语音消息；若转码失败，应返回明确错误文本。

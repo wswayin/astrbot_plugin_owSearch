@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from PIL import ImageDraw
 
 from ..models import MatchDetail
@@ -12,7 +10,6 @@ from .base import (
     ORANGE,
     PANEL,
     PANEL_2,
-    PURPLE,
     RED,
     TEAL,
     TEXT,
@@ -21,10 +18,8 @@ from .base import (
     canvas,
     draw_header,
     draw_kv,
-    draw_wrapped,
     font_pack,
     format_num,
-    join_lines,
     rounded_panel,
 )
 
@@ -125,55 +120,4 @@ def render_all_players_image(detail: MatchDetail, *, font_paths: list[str] | Non
             color = side_color if value == side else (ORANGE if is_focus and x == xs[1] else TEXT)
             draw.text((x, y + 8), value, font=fonts["small_bold"] if is_focus else fonts["small"], fill=color)
         y += row_h
-    return image
-
-
-def _as_list(value: Any) -> list[str]:
-    if isinstance(value, list):
-        return [str(item) for item in value if str(item).strip()]
-    if value:
-        return [str(value)]
-    return []
-
-
-def render_analysis_image(detail: MatchDetail, analysis: Any, *, font_paths: list[str] | None = None):
-    width, height = 1220, 900
-    image = canvas(width, height)
-    draw = ImageDraw.Draw(image)
-    fonts = font_pack(font_paths)
-    draw_header(draw, f"{detail.identity.full_id} AI 开庭", summarize_match_for_text(detail), width, fonts)
-
-    ok = bool(getattr(analysis, "ok", False))
-    data = getattr(analysis, "data", {}) or {}
-    fallback = str(getattr(analysis, "fallback_text", "") or "")
-    model = str(getattr(analysis, "model", "") or "")
-
-    rounded_panel(draw, (48, 176, width - 48, 344))
-    score = str(data.get("score") or ("-" if not ok else "B"))
-    badge(draw, (78, 214), f"评分 {score}", fonts["body_bold"], fill=PURPLE if ok else RED, text_fill=TEXT)
-    verdict = str(data.get("verdict") or data.get("general_summary") or data.get("summary") or fallback or "AI 分析暂不可用。")
-    draw_wrapped(draw, (78, 272), verdict, fonts["section"], max_width=width - 156, fill=TEXT, max_lines=2)
-
-    rounded_panel(draw, (48, 382, width - 48, height - 52), fill=PANEL_2)
-    if not ok:
-        draw.text((78, 420), "分析未生成", font=fonts["section"], fill=RED)
-        draw_wrapped(draw, (78, 470), fallback or "请检查 AI 配置。", fonts["body"], max_width=width - 156, fill=TEXT)
-        draw.text((78, height - 92), f"model: {model or '-'}", font=fonts["small"], fill=MUTED)
-        return image
-
-    sections = [
-        ("亮点", join_lines(_as_list(data.get("highlights"))), TEAL),
-        ("问题", join_lines(_as_list(data.get("problems"))), RED),
-        ("建议", join_lines(_as_list(data.get("advice"))), ORANGE),
-    ]
-    x_positions = [78, 438, 798]
-    for (title, body, color), x in zip(sections, x_positions):
-        draw.rounded_rectangle((x, 420, x + 320, 730), radius=8, fill=PANEL)
-        draw.text((x + 24, 448), title, font=fonts["section"], fill=color)
-        draw_wrapped(draw, (x + 24, 500), body.replace("\n", "；"), fonts["body"], max_width=272, fill=TEXT, max_lines=7)
-
-    meme = str(data.get("meme_line") or data.get("extra") or "")
-    draw.text((78, 770), "庭审结语", font=fonts["section"], fill=YELLOW)
-    draw_wrapped(draw, (78, 814), meme or "mamba out。", fonts["body_bold"], max_width=width - 156, fill=TEXT, max_lines=2)
-    draw.text((78, height - 92), f"model: {model or '-'}", font=fonts["small"], fill=MUTED)
     return image

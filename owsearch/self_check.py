@@ -9,9 +9,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
-from .cache.context import ContextKey
-from .commands.handler import OwCommandHandler
-from .config import PluginConfig
+from .renderers import render_all_players_image, render_match_detail_image, save_image
+from .services.sample_data import build_sample_match_detail
 
 
 @dataclass
@@ -43,7 +42,7 @@ class SelfCheckReport:
 
 
 def _check_imports(report: SelfCheckReport) -> None:
-    for module_name in ("httpx", "PIL", "zoneinfo", "imageio_ffmpeg"):
+    for module_name in ("httpx", "PIL", "zoneinfo"):
         try:
             importlib.import_module(module_name)
         except Exception as exc:
@@ -66,25 +65,25 @@ def _check_schema(report: SelfCheckReport, root: Path) -> None:
     except Exception as exc:
         report.add("config schema JSON", False, f"{type(exc).__name__}: {exc}")
         return
-    for key in ("dashen", "ai", "render", "ow_guess"):
+    for key in ("dashen", "ai", "render"):
         report.add(f"config schema {key}", key in data, "missing" if key not in data else "")
 
 
 async def _check_render(report: SelfCheckReport) -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
-        handler = OwCommandHandler(PluginConfig.from_mapping({}), Path(temp_dir))
-        try:
-            replies = await handler.handle("/ow debug 图片", ContextKey("self-check", "local", "local"))
-        finally:
-            await handler.close()
-
-        image_replies = [reply for reply in replies if reply.kind == "image" and reply.path]
-        report.add("debug render reply count", len(image_replies) == 3, f"got {len(image_replies)} image replies")
-        for index, reply in enumerate(image_replies, 1):
-            path = Path(reply.path)
+        detail = build_sample_match_detail()
+        output_dir = Path(temp_dir)
+        images = (
+            render_match_detail_image(detail),
+            render_all_players_image(detail),
+        )
+        saved = [save_image(image, output_dir, prefix=f"self_check_{index}", max_bytes=5 * 1024 * 1024) for index, image in enumerate(images, 1)]
+        report.add("local render reply count", len(saved) == 2, f"got {len(saved)} image files")
+        for index, item in enumerate(saved, 1):
+            path = item.path
             ok = path.exists() and path.stat().st_size > 1000
             size = path.stat().st_size if path.exists() else 0
-            report.add(f"debug render image {index}", ok, f"{size} bytes")
+            report.add(f"local render image {index}", ok, f"{size} bytes")
 
 
 def _check_text(report: SelfCheckReport, root: Path) -> None:

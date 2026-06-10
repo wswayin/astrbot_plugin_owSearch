@@ -25,7 +25,6 @@ IntentName = Literal[
     "patch_notes",
     "esports",
     "identity_search",
-    "ow_guess",
     "refresh",
     "debug_matches",
     "debug_config",
@@ -49,7 +48,6 @@ class CommandIntent:
     view: str = ""
     mmr: str = ""
     question: str = ""
-    question_type: str = ""
     patch_kind: str = ""
     selector: str = ""
     index: int | None = None

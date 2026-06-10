@@ -74,21 +74,6 @@
         "description": "AI 请求超时时间",
         "type": "int",
         "default": 60
-      },
-      "temperature": {
-        "description": "采样温度",
-        "type": "float",
-        "default": 0.7
-      },
-      "max_tokens": {
-        "description": "最大输出 token",
-        "type": "int",
-        "default": 1200
-      },
-      "persona_prompt": {
-        "description": "AI 锐评人格设定，只写风格，不写数据格式",
-        "type": "string",
-        "default": "请保持客观中立，拒绝无脑奉承；如果焦点玩家表现拉胯请直接指出。说话风格可带一点科比 meme：man! what can i say, mamba out。"
       }
     }
   },
@@ -110,17 +95,6 @@
         "description": "最多保留多少张渲染图片，最低 20，避免刚生成的多图回复被清理",
         "type": "int",
         "default": 300
-      }
-    }
-  },
-  "ow_guess": {
-    "description": "OW 猜题资源包配置；questions.json 已内置，大体积音频/图片素材需单独放置。",
-    "type": "object",
-    "items": {
-      "asset_root": {
-        "description": "ow_guess_assets 资源包根目录。留空时自动查找 data/ow_guess_assets、插件根目录 ow_guess_assets、overstats/ow_guess_assets；相对路径按插件目录解析。",
-        "type": "string",
-        "default": ""
       }
     }
   },

@@ -16,7 +16,7 @@ class ImageFile:
     media_type: str
 
 
-MEDIA_SUFFIXES = {".png", ".jpg", ".jpeg", ".wav", ".mp3", ".ogg", ".m4a", ".amr", ".flac", ".webm"}
+MEDIA_SUFFIXES = {".png", ".jpg", ".jpeg"}
 
 
 def _suffix_for_media_type(media_type: str, default: str = ".bin") -> tuple[str, str]:
@@ -25,20 +25,6 @@ def _suffix_for_media_type(media_type: str, default: str = ".bin") -> tuple[str,
         return ".jpg", "image/jpeg"
     if normalized == "image/png":
         return ".png", "image/png"
-    if normalized in {"audio/wav", "audio/x-wav", "audio/wave"}:
-        return ".wav", "audio/wav"
-    if normalized in {"audio/mpeg", "audio/mp3"}:
-        return ".mp3", "audio/mpeg"
-    if normalized in {"audio/ogg", "application/ogg"}:
-        return ".ogg", "audio/ogg"
-    if normalized in {"audio/mp4", "audio/x-m4a"}:
-        return ".m4a", "audio/mp4"
-    if normalized == "audio/amr":
-        return ".amr", "audio/amr"
-    if normalized == "audio/flac":
-        return ".flac", "audio/flac"
-    if normalized == "audio/webm":
-        return ".webm", "audio/webm"
     return default, normalized or "application/octet-stream"
 
 
@@ -78,15 +64,6 @@ def save_image_bytes(data: bytes, output_dir: Path, *, prefix: str, media_type: 
     suffix, saved_media_type = _suffix_for_media_type(media_type or "image/png", default=".png")
     if suffix not in {".png", ".jpg"}:
         suffix, saved_media_type = ".png", "image/png"
-    stem = f"{prefix}_{now_compact()}_{uuid4().hex[:8]}"
-    path = output_dir / f"{stem}{suffix}"
-    path.write_bytes(bytes(data or b""))
-    return ImageFile(path=path, media_type=saved_media_type)
-
-
-def save_media_bytes(data: bytes, output_dir: Path, *, prefix: str, media_type: str) -> ImageFile:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    suffix, saved_media_type = _suffix_for_media_type(media_type, default=".bin")
     stem = f"{prefix}_{now_compact()}_{uuid4().hex[:8]}"
     path = output_dir / f"{stem}{suffix}"
     path.write_bytes(bytes(data or b""))

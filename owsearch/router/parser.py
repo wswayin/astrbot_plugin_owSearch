@@ -307,10 +307,6 @@ def parse_command(message: str) -> CommandIntent:
         limit = _parse_limit(rest[1:] if len(rest) > 1 else [], None)
         return CommandIntent(name="identity_search", bnet_id=bnet_id, limit=limit, raw_args=raw_args)
 
-    if head in {"guess", "owguess", "ow_guess", "猜", "猜题", "守望猜"}:
-        question_type = rest[0] if rest else ""
-        return CommandIntent(name="ow_guess", question_type=question_type, raw_args=raw_args)
-
     if head in {"detail", "详情", "单局"}:
         if not rest:
             return CommandIntent(name="match_detail", raw_args=raw_args)
@@ -405,7 +401,8 @@ def parse_command(message: str) -> CommandIntent:
         if sub in {"live", "dashen", "接口", "联调"}:
             return CommandIntent(name="debug_live", bnet_id=bnet_id, limit=_parse_limit(rest[2:], None), raw_args=raw_args)
         if sub in {"render", "image", "图片", "图"}:
-            return CommandIntent(name="debug_render", raw_args=raw_args)
+            index = _parse_index(rest[2]) if len(rest) > 2 else None
+            return CommandIntent(name="debug_render", bnet_id=bnet_id, index=index or 1, raw_args=raw_args)
         if sub in {"matches", "战绩", "对局"}:
             return CommandIntent(name="debug_matches", bnet_id=bnet_id, limit=_parse_limit(rest[2:], None), raw_args=raw_args)
 
