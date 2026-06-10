@@ -17,7 +17,7 @@ Python 3.11+。
 
 ```txt
 httpx>=0.27,<1
-Pillow>=10,<12
+Pillow>=10,<13
 tzdata>=2024.1
 ```
 
