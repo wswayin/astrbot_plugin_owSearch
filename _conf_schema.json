@@ -1,0 +1,131 @@
+{
+  "dashen": {
+    "description": "网易大神数据接口凭据。需要从已登录大神环境中取得 role_id 和 token。",
+    "type": "object",
+    "hint": "必填：role_id、token。敏感字段不会在 debug 输出中明文展示。",
+    "items": {
+      "role_id": {
+        "description": "大神账号 roleId",
+        "type": "int",
+        "default": 0
+      },
+      "token": {
+        "description": "大神账号 GL-Bigdata-Auth-Token / token",
+        "type": "string",
+        "default": ""
+      },
+      "server": {
+        "description": "大神服务器 ID，国服通常为 1",
+        "type": "int",
+        "default": 1
+      },
+      "dts": {
+        "description": "大神 BigData DTS，Overstats 当前默认 2026",
+        "type": "int",
+        "default": 2026
+      },
+      "client_type": {
+        "description": "GL-ClientType，Overstats 默认 60",
+        "type": "string",
+        "default": "60"
+      },
+      "timeout_seconds": {
+        "description": "Dashen 请求超时时间",
+        "type": "int",
+        "default": 20
+      },
+      "max_concurrent_requests": {
+        "description": "Dashen 并发请求上限",
+        "type": "int",
+        "default": 2
+      },
+      "include_fight": {
+        "description": "战绩列表是否包含角斗模式；/ow 开庭 会自动跳过角斗模式",
+        "type": "bool",
+        "default": true
+      }
+    }
+  },
+  "ai": {
+    "description": "OpenAI-compatible AI 分析配置。原版 Overstats 也是填写自有 OpenAI-compatible API，不调用网易大神 AI。",
+    "type": "object",
+    "items": {
+      "enabled": {
+        "description": "是否启用 AI 分析",
+        "type": "bool",
+        "default": false
+      },
+      "base_url": {
+        "description": "OpenAI-compatible base URL，例如 https://api.openai.com/v1 或 https://api.deepseek.com/v1",
+        "type": "string",
+        "default": ""
+      },
+      "api_key": {
+        "description": "AI API Key",
+        "type": "string",
+        "default": ""
+      },
+      "model": {
+        "description": "模型名。留空时会按 base_url 粗略推断。",
+        "type": "string",
+        "default": ""
+      },
+      "timeout_seconds": {
+        "description": "AI 请求超时时间",
+        "type": "int",
+        "default": 60
+      },
+      "temperature": {
+        "description": "采样温度",
+        "type": "float",
+        "default": 0.7
+      },
+      "max_tokens": {
+        "description": "最大输出 token",
+        "type": "int",
+        "default": 1200
+      },
+      "persona_prompt": {
+        "description": "AI 锐评人格设定，只写风格，不写数据格式",
+        "type": "string",
+        "default": "请保持客观中立，拒绝无脑奉承；如果焦点玩家表现拉胯请直接指出。说话风格可带一点科比 meme：man! what can i say, mamba out。"
+      }
+    }
+  },
+  "render": {
+    "description": "图片渲染配置",
+    "type": "object",
+    "items": {
+      "max_bytes": {
+        "description": "单张图片最大字节数，超过后自动转 JPEG 压缩",
+        "type": "int",
+        "default": 5242880
+      },
+      "font_paths": {
+        "description": "自定义字体路径，多个路径用英文分号分隔",
+        "type": "string",
+        "default": ""
+      },
+      "max_render_files": {
+        "description": "最多保留多少张渲染图片，最低 20，避免刚生成的多图回复被清理",
+        "type": "int",
+        "default": 300
+      }
+    }
+  },
+  "storage_dir": {
+    "description": "缓存和渲染图片目录；相对路径会放在插件目录下",
+    "type": "string",
+    "default": "data"
+  },
+  "default_match_limit": {
+    "description": "战绩列表默认返回数量",
+    "type": "int",
+    "default": 10
+  },
+  "debug": {
+    "description": "是否开启调试输出；敏感字段仍会脱敏",
+    "type": "bool",
+    "default": false
+  }
+}
