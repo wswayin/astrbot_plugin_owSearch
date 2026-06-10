@@ -19,6 +19,7 @@ from ..renderers import (
     cleanup_render_dir,
     save_image,
 )
+from ..renderers.fonts import font_diagnostics
 from ..renderers.text_fallback import detail_text, match_list_text, profile_text
 from ..router import parse_command
 from ..router.intents import CommandIntent
@@ -279,6 +280,7 @@ class OwCommandHandler:
     def _debug_config_text(self) -> str:
         dashen = self.config.dashen
         ai = self.config.ai
+        fonts = font_diagnostics(self.config.render.font_paths)
         lines = [
             "OW 查询配置检查：",
             f"Dashen role_id：{'已填' if dashen.role_id > 0 else '未填'}",
@@ -291,5 +293,8 @@ class OwCommandHandler:
             f"AI model：{ai.model or '自动推断'}",
             f"图片上限：{self.config.render.max_bytes} bytes",
             f"图片保留：{self.config.render.max_render_files} 张",
+            f"中文字体：{'已找到' if fonts['cjk_ready'] else '未确认'}",
+            f"常规字体：{fonts['regular'] or '-'}",
+            f"粗体字体：{fonts['bold'] or '-'}",
         ]
         return "\n".join(lines)

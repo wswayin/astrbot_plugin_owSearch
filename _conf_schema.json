@@ -102,7 +102,7 @@
         "default": 5242880
       },
       "font_paths": {
-        "description": "自定义字体路径，多个路径用英文分号分隔",
+        "description": "自定义字体文件或目录，多个路径用英文分号分隔；中文显示方块时填写 NotoSansCJK、SourceHanSans、微软雅黑等字体路径",
         "type": "string",
         "default": ""
       },

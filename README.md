@@ -27,6 +27,13 @@ Linux/Docker 环境建议安装中文字体，否则图片里的中文可能显�
 apt-get update && apt-get install -y fonts-noto-cjk
 ```
 
+如果 AstrBot Docker 镜像里已经有中文字体，但图片仍然是方框，先执行 `/ow debug 配置` 查看实际加载的 `常规字体`/`粗体字体`。如果显示为 `DejaVuSans.ttf` 或 `-`，可以把中文字体文件或字体目录填到 `render.font_paths`，多个路径用英文分号分隔，例如：
+
+```text
+/usr/share/fonts
+/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc;/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc
+```
+
 ## 安装
 
 把本目录放到 AstrBot 插件目录中，确保依赖已安装。若 AstrBot 没有自动安装 `requirements.txt`，手动在 AstrBot 的 Python 环境执行：
