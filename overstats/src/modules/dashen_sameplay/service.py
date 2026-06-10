@@ -341,6 +341,7 @@ class DashenSameplayModule:
 
         main_image = None
         if render:
+            await self.match_module._prefetch_match_render_images(detail_root, source_matches=[source_match])
             main_image = render_match_detail(
                 detail.payload,
                 source_match=source_match,
@@ -381,6 +382,7 @@ class DashenSameplayModule:
                 query_bnet_id=focus_player.bnet_id,
             )
             if all_player_details:
+                await self.match_module._prefetch_match_render_images(detail_root, player_details=all_player_details)
                 waterfall_image = render_all_players_waterfall(
                     all_player_details,
                     match_game_time_sec=detail_root.get("gameTimeSec"),

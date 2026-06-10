@@ -283,10 +283,6 @@ def parse_command(message: str) -> CommandIntent:
             raw_args=raw_args,
         )
 
-    if head in {"perk", "perks", "heroperk", "hero_perk", "威能", "英雄威能", "天赋"}:
-        hero = rest[0] if rest else ""
-        return CommandIntent(name="hero_perk", hero=hero, raw_args=raw_args)
-
     if head in {"wiki", "herowiki", "hero_wiki", "英雄资料", "英雄百科", "英雄维基", "技能"}:
         hero = rest[0] if rest else ""
         question = " ".join(rest[1:]) if len(rest) > 1 else ""

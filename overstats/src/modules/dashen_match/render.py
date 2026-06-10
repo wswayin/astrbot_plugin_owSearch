@@ -10,6 +10,11 @@ from typing import Any, Dict, Sequence
 from urllib.parse import urlparse
 
 try:
+    from overstats.src.client.apiclient import _find_cached_remote_image_path
+except ModuleNotFoundError:
+    from src.client.apiclient import _find_cached_remote_image_path
+
+try:
     from overstats.src.modules.query_tool import get_cached_asset_path, load_query_tool
 except ModuleNotFoundError:
     from src.modules.query_tool import get_cached_asset_path, load_query_tool
@@ -982,7 +987,7 @@ def _draw_map_background(img: Any, map_info: Dict[str, Any], y: int) -> None:
     icon_url = map_info.get("icon")
     if not icon_url:
         return
-    local_path = get_cached_asset_path(str(icon_url), "maps")
+    local_path = _cached_path_for_url(str(icon_url), ("maps", "misc"))
     if not local_path or not local_path.exists():
         return
     try:
@@ -1053,6 +1058,12 @@ def _cached_path_for_url(url: str, categories: Sequence[str]) -> Path | None:
         manifest_path = _manifest_asset_path(clean_url, categories)
         if manifest_path:
             return manifest_path
+        remote_path = _find_cached_remote_image_path(clean_url)
+        if remote_path and remote_path.exists():
+            return remote_path
+    remote_path = _find_cached_remote_image_path(normalized)
+    if remote_path and remote_path.exists():
+        return remote_path
     return None
 
 

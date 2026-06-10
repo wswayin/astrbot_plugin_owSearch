@@ -127,10 +127,9 @@ class RouterTests(unittest.TestCase):
         self.assertEqual(intent.mmr, "Diamond")
         self.assertEqual(intent.history_limit, 18)
 
-    def test_hero_perk(self):
+    def test_hero_perk_is_removed(self):
         intent = parse_command("/ow 威能 安娜")
-        self.assertEqual(intent.name, "hero_perk")
-        self.assertEqual(intent.hero, "安娜")
+        self.assertEqual(intent.name, "help")
 
     def test_hero_wiki_question(self):
         intent = parse_command("/ow 英雄资料 安娜 技能冷却是多少")

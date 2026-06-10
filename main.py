@@ -27,7 +27,7 @@ from owsearch.config import PluginConfig
 from owsearch.models import ReplyItem
 
 
-@register("astrbot_plugin_owSearch", "wswayin", "Overwatch player and match search through Dashen data.", "0.3.1")
+@register("astrbot_plugin_owSearch", "wswayin", "Overwatch player and match search through Dashen data.", "0.3.2")
 class OwSearchPlugin(Star):
     def __init__(self, context: Context, config=None):
         super().__init__(context)
@@ -292,17 +292,6 @@ class OwSearchPlugin(Star):
             hero=hero or "",
             history_limit=history_limit or 20,
         )
-        for result in self._reply_results(event, replies):
-            yield result
-
-    @filter.llm_tool(name="ow_hero_perk")
-    async def ow_hero_perk(self, event: AstrMessageEvent, hero: str):
-        '''查询守望先锋英雄威能或天赋数据图。
-
-        Args:
-            hero(string): 英雄名称，例如 安娜。
-        '''
-        replies = await self.handler.overstats_bridge.hero_perk(hero)
         for result in self._reply_results(event, replies):
             yield result
 

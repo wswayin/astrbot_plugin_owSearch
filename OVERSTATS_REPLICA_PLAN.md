@@ -75,7 +75,7 @@ AstrBot command layer
 - [x] `dashen_hero_leaderboard`
 - [x] `dashen_hero_treemap`
 - [x] `ow_hero_pick_rate`
-- [x] `ow_hero_perk`
+- [x] `ow_hero_perk`：后续按用户要求移除
 - [x] `ow_hero_wiki`
 - [x] `ow_shop`
 - [x] `patch_notes`
@@ -90,7 +90,7 @@ AstrBot command layer
 ### Phase 5: 发布
 
 - [x] 全量测试与自检
-- [x] README 更新为 v0.3.1 说明
+- [x] README 更新为 v0.3.2 说明
 - [x] metadata/version 升级
 - [x] commit author 使用 `wswayin`
 - [x] tag 并推送
@@ -116,7 +116,7 @@ AstrBot command layer
 - 2026-06-10：强度模块迁移后单元测试 `37 tests OK`，自检 `result: OK`。
 - 2026-06-10：补齐 `dashen_rank_history`、`dashen_rank_leaderboard`、`dashen_hero_leaderboard`：`/ow 段位历史 玩家#12345 [start] [end]`、`/ow 省榜 省份 职责`、`/ow 英雄榜 省份 英雄 [预设|开放]`。
 - 2026-06-10：榜单模块迁移后单元测试 `43 tests OK`，自检 `result: OK`。
-- 2026-06-10：补齐 `ow_hero_pick_rate`、`ow_hero_perk`、`ow_hero_wiki`：`/ow 登场率 [快速|竞技] [段位]`、`/ow 登场率历史 英雄 [快速|竞技] [段位] [limit]`、`/ow 威能 英雄`、`/ow 英雄资料 英雄 [问题]`。
+- 2026-06-10：补齐 `ow_hero_pick_rate`、`ow_hero_perk`、`ow_hero_wiki`：`/ow 登场率 [快速|竞技] [段位]`、`/ow 登场率历史 英雄 [快速|竞技] [段位] [limit]`、`/ow 威能 英雄`、`/ow 英雄资料 英雄 [问题]`；后续按用户要求删除 `ow_hero_perk` 暴露入口与 vendored 模块。
 - 2026-06-10：英雄公共数据模块迁移后单元测试 `51 tests OK`，自检 `result: OK`。
 - 2026-06-10：补齐 `ow_shop`、`patch_notes`、`ow_esports`：`/ow 商店`、`/ow 补丁 [最新|小补丁|大补丁]`、`/ow 电竞`；新增 `ow_esports_api_key` 配置并在 debug 输出中脱敏。
 - 2026-06-10：商店/补丁/电竞迁移后单元测试 `57 tests OK`，自检 `result: OK`。
@@ -135,6 +135,10 @@ AstrBot command layer
 - 2026-06-10：按用户要求删除猜题模块：移除 `/ow 猜`、`ow_guess` LLM 工具、`ow_guess.asset_root` 配置、音频转码依赖、vendored `overstats/src/modules/ow_guess` 和 `overstats/res/ow_guess`。
 - 2026-06-10：AI 分析提示词与布局固定为 Overstats 原版 `_build_ai_analysis` / `render_analysis_report`，移除插件本地 AI 分析服务与本地 AI 分析图导出。
 - 2026-06-10：本轮调整版本号升级到 v0.3.1，便于区分 v0.3.0 已发布版本。
+- 2026-06-10：针对用户反馈的头像/地图背景白色占位，渲染前按当前对局预缓存地图、英雄图标和玩家头像，并让原版渲染识别远程图片缓存。
+- 2026-06-10：针对 AI 服务端 `HTTP 503 system_cpu_overloaded`，为 OpenAI-compatible AI 调用增加 429/5xx 与临时网络错误短重试；持续失败时保留明确错误文本。
+- 2026-06-10：按用户要求删除英雄威能功能：移除 `/ow 威能` 路由、`ow_hero_perk` LLM 工具、README/帮助入口和 vendored `overstats/src/modules/ow_hero_perk`。
+- 2026-06-10：本轮调整版本号升级到 v0.3.2，作为图片资源预缓存与 AI transient retry 补丁版。
 
 ## 交接
 
@@ -161,7 +165,7 @@ python -B -m owsearch.self_check
 6. `/ow 总结 玩家#12345`、`/ow 昨日总结 玩家#12345`、`/ow 周报 玩家#12345` 能返回原版总结图。
 7. `/ow 快速强度 玩家#12345` 与 `/ow 竞技强度 玩家#12345` 能返回原版强度趋势图。
 8. `/ow 段位历史 玩家#12345`、`/ow 省榜 北京 输出`、`/ow 英雄榜 北京 猎空` 能返回原版榜单图。
-9. `/ow 登场率`、`/ow 威能 安娜`、`/ow 英雄资料 安娜` 能返回原版英雄公共数据图。
+9. `/ow 登场率`、`/ow 英雄资料 安娜` 能返回原版英雄公共数据图；`/ow 威能` 已按用户要求移除。
 10. `/ow 商店`、`/ow 补丁 最新`、`/ow 电竞` 能返回原版公共数据图；电竞需要配置 `ow_esports_api_key`。
 11. `/ow 英雄占比 玩家#12345` 能返回原版英雄使用占比树图。
 12. `/ow debug ai` 不泄露 AI key；`/ow 反查 123456789` 能返回本地身份匹配或明确未找到。

@@ -91,8 +91,6 @@ class OwCommandHandler:
             return await self._hero_treemap(intent)
         if intent.name == "hero_pick_rate":
             return await self._hero_pick_rate(intent)
-        if intent.name == "hero_perk":
-            return await self._hero_perk(intent)
         if intent.name == "hero_wiki":
             return await self._hero_wiki(intent)
         if intent.name == "shop":
@@ -282,10 +280,6 @@ class OwCommandHandler:
             hero=hero,
             history_limit=intent.history_limit,
         )
-
-    async def _hero_perk(self, intent: CommandIntent) -> list[ReplyItem]:
-        hero = self._require_hero(intent, example="示例：/ow 威能 安娜")
-        return await self.overstats_bridge.hero_perk(hero)
 
     async def _hero_wiki(self, intent: CommandIntent) -> list[ReplyItem]:
         hero = self._require_hero(intent, example="示例：/ow 英雄资料 安娜")

@@ -33,7 +33,6 @@ from overstats.src.modules.dashen_hero_treemap import DashenHeroTreemapModule, D
 from overstats.src.modules.dashen_sameplay import DashenSameplayModule, DashenSameplayQuery
 from overstats.src.modules.dashen_summary import DashenSummaryModule, DashenSummaryQuery
 from overstats.src.modules.errors import ModuleError
-from overstats.src.modules.ow_hero_perk import OWHeroPerkModule, OWHeroPerkQuery
 from overstats.src.modules.ow_hero_pick_rate import OWHeroPickRateModule, OWHeroPickRateQuery
 from overstats.src.modules.ow_hero_wiki import OWHeroWikiModule, OWHeroWikiQuery
 from overstats.src.modules.ow_shop import OWShopModule
@@ -78,7 +77,6 @@ class OverstatsBridge:
         )
         self.hero_treemap_module = DashenHeroTreemapModule(api_client=self.client, search_module=self.search_module)
         self.hero_pick_rate_module = OWHeroPickRateModule()
-        self.hero_perk_module = OWHeroPerkModule()
         self.hero_wiki_module = OWHeroWikiModule()
         self.shop_module = OWShopModule(cache_root=data_dir / "overstats_cache" / "ow_shop")
         self.patch_notes_module = PatchNotesModule(cache_root=data_dir / "overstats_cache" / "patch_notes")
@@ -379,16 +377,6 @@ class OverstatsBridge:
         if output.image is None:
             return [ReplyItem.text("没有生成英雄登场率图片。")]
         return [self._reply_item_from_rendered(output.image, prefix="overstats_hero_pick_rate")]
-
-    async def hero_perk(self, hero: str) -> list[ReplyItem]:
-        query = OWHeroPerkQuery(hero=hero)
-        try:
-            output = await self.hero_perk_module.query_perk(query, render=True)
-        except ModuleError as exc:
-            raise OwSearchError(exc.message, exc.hint, code=exc.error, details=exc.details) from exc
-        if output.image is None:
-            return [ReplyItem.text("没有生成英雄威能图片。")]
-        return [self._reply_item_from_rendered(output.image, prefix="overstats_hero_perk")]
 
     async def hero_wiki(self, hero: str, *, question: str = "") -> list[ReplyItem]:
         self._patch_overstats_analysis_runtime()

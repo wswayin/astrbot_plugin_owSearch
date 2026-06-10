@@ -19,7 +19,6 @@ IntentName = Literal[
     "hero_leaderboard",
     "hero_treemap",
     "hero_pick_rate",
-    "hero_perk",
     "hero_wiki",
     "shop",
     "patch_notes",

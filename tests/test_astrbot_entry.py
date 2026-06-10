@@ -100,7 +100,7 @@ class AstrBotEntryTests(unittest.TestCase):
         main = importlib.import_module("main")
         self.assertEqual(main.OwSearchPlugin._astrbot_register["name"], "astrbot_plugin_owSearch")
         self.assertEqual(main.OwSearchPlugin._astrbot_register["author"], "wswayin")
-        self.assertEqual(main.OwSearchPlugin._astrbot_register["version"], "0.3.1")
+        self.assertEqual(main.OwSearchPlugin._astrbot_register["version"], "0.3.2")
         self.assertEqual(main.OwSearchPlugin.ow._astrbot_command, "ow")
         self.assertIn("守望", main.OwSearchPlugin.ow._astrbot_alias)
         self.assertEqual(main.OwSearchPlugin.courtroom._astrbot_command, "开庭")

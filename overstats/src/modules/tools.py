@@ -108,12 +108,6 @@ register_module(
 )
 
 register_module(
-    "ow_hero_perk",
-    "overstats.src.modules.ow_hero_perk",
-    "Hero perk overview reader with merged query-tool metadata and PIL renderer.",
-)
-
-register_module(
     "ow_hero_wiki",
     "overstats.src.modules.ow_hero_wiki",
     "Hero wiki overview and hero-specific Q&A reader with structured rendering.",

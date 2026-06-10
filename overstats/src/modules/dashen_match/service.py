@@ -8,7 +8,7 @@ import json
 import re
 import threading
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 import httpx
 
@@ -41,7 +41,11 @@ from .enhanced_render import (
 from .render import (
     RenderedImage,
     _extract_match_detail_data,
+    _find_hero,
+    _find_map,
+    _hero_icon_url,
     _load_ow_config,
+    _resolve_player_hero,
     _sort_players,
     render_match_detail,
     render_match_list,
@@ -214,6 +218,8 @@ class DashenMatchModule:
         query, resolved_bnet = await self._resolve_query(query)
         matches = await self.requests.list_recent_matches(query)
         full_id = resolved_bnet.full_id if resolved_bnet else (query.bnet_id or f"token:{query.customer_token}")
+        if render:
+            await self._prefetch_match_render_images({}, source_matches=matches)
         image = render_match_list(matches, full_id=full_id) if render else None
         self._store_reply_context(query, resolved_bnet, matches)
         return DashenMatchListOutput(
@@ -255,6 +261,11 @@ class DashenMatchModule:
         render: bool = True,
     ) -> DashenMatchDetailOutput:
         detail = await self.requests.get_match_detail(customer_token, match)
+        if render:
+            await self._prefetch_match_render_images(
+                _extract_match_detail_data(detail.payload),
+                source_matches=[detail.source_match],
+            )
         image = (
             render_match_detail(
                 detail.payload,
@@ -285,6 +296,11 @@ class DashenMatchModule:
                 details={"index": index, "match_count": len(matches)},
             )
         detail = await self.requests.get_match_detail(query.customer_token, matches[index])
+        if render:
+            await self._prefetch_match_render_images(
+                _extract_match_detail_data(detail.payload),
+                source_matches=[detail.source_match or matches[index]],
+            )
         image = (
             render_match_detail(
                 detail.payload,
@@ -362,6 +378,9 @@ class DashenMatchModule:
         )
         query_bnet_id = (resolved_bnet.bnet_id if resolved_bnet else "") or (str(query.bnet_id or "") if query else "")
 
+        detail_root = _extract_match_detail_data(detail.payload)
+        await self._prefetch_match_render_images(detail_root, source_matches=[detail.source_match or source_match])
+
         main_image = render_match_detail(
             detail.payload,
             source_match=detail.source_match or source_match,
@@ -375,7 +394,6 @@ class DashenMatchModule:
             subtitle="角斗对局主战绩" if detail.match_kind == "fight" else "大神对局主战绩",
         )
 
-        detail_root = _extract_match_detail_data(detail.payload)
         ordered_player_ids = self._ordered_player_ids(detail_root)
         is_competitive_match = self._is_competitive_match(detail_root, detail.match_kind, detail.source_match or source_match)
         replies = [
@@ -414,6 +432,7 @@ class DashenMatchModule:
                 query_full_id=query_full_id,
                 query_bnet_id=query_bnet_id,
             )
+            await self._prefetch_match_render_images(detail_root, player_details=player_details)
             waterfall = render_all_players_waterfall(player_details, match_game_time_sec=detail_root.get("gameTimeSec"))
             waterfall = decorate_rendered_image_header(waterfall, query_full_id, bnet_id=query_bnet_id, subtitle="全员详细数据")
             replies.append(_image_reply(waterfall))
@@ -757,6 +776,59 @@ class DashenMatchModule:
         _cache_put(_PLAYER_CARD_CACHE, cache_key, payload, ttl=PLAYER_CARD_CACHE_TTL, max_size=PLAYER_CARD_CACHE_MAX)
         return payload
 
+    async def _prefetch_match_render_images(
+        self,
+        match_data: Dict[str, Any],
+        *,
+        source_matches: Sequence[Dict[str, Any]] | None = None,
+        player_details: Sequence[Dict[str, Any]] | None = None,
+    ) -> None:
+        config = _load_ow_config()
+        urls: list[str] = []
+
+        def add_url(value: Any) -> None:
+            text = str(value or "").strip()
+            if text.startswith(("http://", "https://")):
+                urls.append(text)
+
+        for source_match in source_matches or []:
+            if isinstance(source_match, dict):
+                add_url(_find_map(config, source_match.get("mapGuid")).get("icon"))
+        add_url(_find_map(config, match_data.get("mapGuid")).get("icon"))
+
+        player_roots: list[Dict[str, Any]] = []
+        for key in ("teammateList", "enemyList"):
+            player_roots.extend([item for item in match_data.get(key, []) if isinstance(item, dict)])
+        player_roots.extend([item for item in (player_details or []) if isinstance(item, dict)])
+
+        for player in player_roots:
+            for key in ("icon", "avatar", "playerIcon", "heroIcon"):
+                add_url(player.get(key))
+            hero_info = _resolve_player_hero(config, player)
+            add_url(_hero_icon_url(hero_info, player))
+            for hero in player.get("heroList") or []:
+                if not isinstance(hero, dict):
+                    continue
+                for key in ("smallIconUrl", "ddHeroIcon", "icon", "circleIcon", "heroIcon", "avatar"):
+                    add_url(hero.get(key))
+                nested_hero_info = _find_hero(config, hero.get("heroGuid") or hero.get("heroId"))
+                add_url(_hero_icon_url(nested_hero_info, hero))
+
+        unique_urls = list(dict.fromkeys(urls))[:80]
+        if not unique_urls:
+            return
+
+        semaphore = asyncio.Semaphore(8)
+
+        async def fetch_one(url: str) -> None:
+            async with semaphore:
+                try:
+                    await self.requests.api_client.get_icon(url)
+                except Exception:
+                    pass
+
+        await asyncio.gather(*(fetch_one(url) for url in unique_urls))
+
     async def _build_ai_analysis(
         self,
         *,
@@ -877,18 +949,47 @@ class DashenMatchModule:
             "Content-Type": "application/json",
         }
         proxy_url = get_analysis_proxy(url)
+        retry_statuses = {429, 500, 502, 503, 504}
+        retry_delays = (1.0, 2.5)
         async with build_analysis_async_client(timeout=300, proxy_url=proxy_url) as client:
-            response = await client.post(url, json=payload, headers=headers)
-            try:
-                response.raise_for_status()
-            except httpx.HTTPStatusError as exc:
-                body = str(response.text or "").replace("\n", " ").strip()
-                if api_key:
-                    body = body.replace(api_key, "***")
-                if len(body) > 600:
-                    body = body[:600] + "..."
-                raise RuntimeError(f"HTTP {response.status_code}: {body or response.reason_phrase}") from exc
-            return response.json()
+            last_retry_error: BaseException | None = None
+            for attempt in range(len(retry_delays) + 1):
+                try:
+                    response = await client.post(url, json=payload, headers=headers)
+                except (
+                    httpx.ConnectError,
+                    httpx.ConnectTimeout,
+                    httpx.PoolTimeout,
+                    httpx.ReadError,
+                    httpx.ReadTimeout,
+                    httpx.RemoteProtocolError,
+                    httpx.TimeoutException,
+                ) as exc:
+                    last_retry_error = exc
+                    if attempt < len(retry_delays):
+                        await asyncio.sleep(retry_delays[attempt])
+                        continue
+                    raise RuntimeError(f"AI 服务暂时不可用：{type(exc).__name__}: {exc}") from exc
+                try:
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as exc:
+                    body = str(response.text or "").replace("\n", " ").strip()
+                    if api_key:
+                        body = body.replace(api_key, "***")
+                    if len(body) > 600:
+                        body = body[:600] + "..."
+                    message = f"HTTP {response.status_code}: {body or response.reason_phrase}"
+                    last_retry_error = RuntimeError(message)
+                    if response.status_code in retry_statuses and attempt < len(retry_delays):
+                        await asyncio.sleep(retry_delays[attempt])
+                        continue
+                    if response.status_code in retry_statuses:
+                        raise RuntimeError(f"{message}（已重试 {attempt} 次，仍失败）") from exc
+                    raise RuntimeError(message) from exc
+                return response.json()
+            if last_retry_error:
+                raise RuntimeError(str(last_retry_error))
+            return {}
 
     def _match_result_text(self, match_data: Dict[str, Any]) -> str:
         if match_data.get("matchRet") == 1:

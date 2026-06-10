@@ -99,10 +99,6 @@ class FakeOverstatsBridge:
         self.history_limit = history_limit
         return [MatchReplyFactory.image("hero-pick-rate")]
 
-    async def hero_perk(self, hero):
-        self.hero = hero
-        return [MatchReplyFactory.image("hero-perk")]
-
     async def hero_wiki(self, hero, *, question=""):
         self.hero = hero
         self.question = question
@@ -374,7 +370,7 @@ class HandlerE2ETests(unittest.TestCase):
 
         asyncio.run(run())
 
-    def test_hero_perk_uses_hero(self):
+    def test_hero_perk_is_removed(self):
         async def run():
             with tempfile.TemporaryDirectory() as temp_dir:
                 handler = OwCommandHandler(PluginConfig.from_mapping({}), Path(temp_dir))
@@ -388,8 +384,8 @@ class HandlerE2ETests(unittest.TestCase):
                 finally:
                     await handler.close()
 
-                self.assertEqual(fake_bridge.hero, "安娜")
-                self.assertEqual([reply.kind for reply in replies], ["image"])
+                self.assertEqual([reply.kind for reply in replies], ["text"])
+                self.assertIn("守望查询", replies[0].content)
 
         asyncio.run(run())
 
