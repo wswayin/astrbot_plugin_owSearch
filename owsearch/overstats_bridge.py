@@ -50,6 +50,35 @@ PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 ORIGINAL_ANALYSIS_PERSONA_PROMPT = str(getattr(overstats_config, "ANALYSIS_PERSONA_PROMPT", "") or "")
 
 
+def _int_or_default(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _module_error_to_owsearch(exc: ModuleError, *, requested_index: int | None = None) -> OwSearchError:
+    details = dict(exc.details or {})
+    if exc.error == "match_index_out_of_range":
+        match_count = _int_or_default(details.get("match_count"), 0)
+        internal_index = _int_or_default(details.get("index"), 0)
+        display_index = int(requested_index) if requested_index is not None else internal_index + 1
+        if match_count <= 0:
+            return OwSearchError(
+                "没有找到可用的最近对局。",
+                "大神接口本次返回 0 条可用于详情/开庭的对局。请确认玩家公开战绩、Dashen role/token 未过期，或先用 /ow 战绩 玩家#12345 查看列表。",
+                code=exc.error,
+                details=details,
+            )
+        return OwSearchError(
+            f"可用对局只有 {match_count} 场，无法查询第 {display_index} 场。",
+            f"请改用 1 到 {match_count} 之间的数字，例如 /ow 开庭 玩家#12345 1。",
+            code=exc.error,
+            details=details,
+        )
+    return OwSearchError(exc.message, exc.hint, code=exc.error, details=details)
+
+
 class OverstatsBridge:
     def __init__(self, config: PluginConfig, data_dir: Path) -> None:
         self.config = config
@@ -167,7 +196,7 @@ class OverstatsBridge:
                 analyze=True,
             )
         except ModuleError as exc:
-            raise OwSearchError(exc.message, exc.hint, code=exc.error, details=exc.details) from exc
+            raise _module_error_to_owsearch(exc, requested_index=one_based_index) from exc
         return self._reply_items_from_overstats(output.replies, prefix="overstats_court")
 
     async def match_list(self, bnet_id: str, *, limit: int = 10, include_fight: bool = True) -> list[ReplyItem]:
@@ -223,7 +252,7 @@ class OverstatsBridge:
                 analyze=analyze,
             )
         except ModuleError as exc:
-            raise OwSearchError(exc.message, exc.hint, code=exc.error, details=exc.details) from exc
+            raise _module_error_to_owsearch(exc, requested_index=one_based_index) from exc
         return self._reply_items_from_overstats(output.replies, prefix="overstats_detail")
 
     async def sameplay_list(self, player1_bnet_id: str, player2_bnet_id: str, *, limit: int = 20) -> list[ReplyItem]:
@@ -264,7 +293,7 @@ class OverstatsBridge:
                 analyze=analyze,
             )
         except ModuleError as exc:
-            raise OwSearchError(exc.message, exc.hint, code=exc.error, details=exc.details) from exc
+            raise _module_error_to_owsearch(exc, requested_index=one_based_index) from exc
         return self._reply_items_from_overstats(output.replies, prefix="overstats_sameplay_detail")
 
     async def summary(self, bnet_id: str, *, scope: str = "today") -> list[ReplyItem]:

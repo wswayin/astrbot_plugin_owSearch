@@ -90,7 +90,7 @@ AstrBot command layer
 ### Phase 5: 发布
 
 - [x] 全量测试与自检
-- [x] README 更新为 v0.3.3 说明
+- [x] README 更新为 v0.3.4 说明
 - [x] metadata/version 升级
 - [x] commit author 使用 `wswayin`
 - [x] tag 并推送
@@ -141,6 +141,7 @@ AstrBot command layer
 - 2026-06-10：本轮调整版本号升级到 v0.3.2，作为图片资源预缓存与 AI transient retry 补丁版。
 - 2026-06-10：针对主战绩图仍看不见英雄头像/威能图标的问题，补充已选威能图标预缓存，并在缺少 `heroGuid` 时通过已选威能反推英雄头像；本轮调整版本号升级到 v0.3.3。
 - 2026-06-10：按用户要求调整 AI 锐评人格为毒舌守望评论员，并将 `extra` 结语提示改为 200 字以内的人格化毒舌点评。
+- 2026-06-11：修正最近对局为空或序号超出范围时的用户侧错误提示，避免空列表显示 `Use an index from 0 to 0`；本轮调整版本号升级到 v0.3.4。
 
 ## 交接
 

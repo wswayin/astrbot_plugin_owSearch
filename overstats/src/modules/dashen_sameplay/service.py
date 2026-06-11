@@ -55,6 +55,17 @@ _CACHE_LOCK = threading.RLock()
 _SAMEPLAY_LIST_CACHE: "OrderedDict[str, dict[str, Any]]" = OrderedDict()
 
 
+def _match_index_error(index: int, match_count: int) -> ModuleError:
+    hint = "No sameplay match is available for this query." if match_count <= 0 else f"Use an index from 0 to {match_count - 1}."
+    return ModuleError(
+        error="match_index_out_of_range",
+        message=f"Match index out of range: {index}",
+        status_code=400,
+        hint=hint,
+        details={"index": index, "match_count": match_count},
+    )
+
+
 def _cache_get(cache: OrderedDict, key: Any) -> Any:
     with _CACHE_LOCK:
         item = cache.get(key)
@@ -813,13 +824,7 @@ class DashenSameplayModule:
                 status_code=400,
             )
         if index < 0 or index >= len(matches):
-            raise ModuleError(
-                error="match_index_out_of_range",
-                message=f"Match index out of range: {index}",
-                status_code=400,
-                hint=f"Use an index from 0 to {max(len(matches) - 1, 0)}.",
-                details={"index": index, "match_count": len(matches)},
-            )
+            raise _match_index_error(index, len(matches))
         return dict(matches[index])
 
     async def _fetch_main_match_detail(

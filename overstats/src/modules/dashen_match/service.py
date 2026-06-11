@@ -72,6 +72,17 @@ _PLAYER_CARD_CACHE: "OrderedDict[str, dict[str, Any]]" = OrderedDict()
 _REPLY_CONTEXT_CACHE: "OrderedDict[str, dict[str, Any]]" = OrderedDict()
 
 
+def _match_index_error(index: int, match_count: int) -> ModuleError:
+    hint = "No recent match is available for this query." if match_count <= 0 else f"Use an index from 0 to {match_count - 1}."
+    return ModuleError(
+        error="match_index_out_of_range",
+        message=f"Match index out of range: {index}",
+        status_code=400,
+        hint=hint,
+        details={"index": index, "match_count": match_count},
+    )
+
+
 def _cache_get(cache: OrderedDict, key: Any) -> Any:
     with _CACHE_LOCK:
         item = cache.get(key)
@@ -291,13 +302,7 @@ class DashenMatchModule:
         query, resolved_bnet = await self._resolve_query(query)
         matches = await self._list_matches_for_query(query, resolved_bnet)
         if index < 0 or index >= len(matches):
-            raise ModuleError(
-                error="match_index_out_of_range",
-                message=f"Match index out of range: {index}",
-                status_code=400,
-                hint=f"Use an index from 0 to {max(len(matches) - 1, 0)}.",
-                details={"index": index, "match_count": len(matches)},
-            )
+            raise _match_index_error(index, len(matches))
         detail = await self.requests.get_match_detail(query.customer_token, matches[index])
         if render:
             await self._prefetch_match_render_images(
@@ -363,13 +368,7 @@ class DashenMatchModule:
             customer_token = resolved_query.customer_token
             matches = await self._list_matches_for_query(resolved_query, resolved_bnet)
             if index < 0 or index >= len(matches):
-                raise ModuleError(
-                    error="match_index_out_of_range",
-                    message=f"Match index out of range: {index}",
-                    status_code=400,
-                    hint=f"Use an index from 0 to {max(len(matches) - 1, 0)}.",
-                    details={"index": index, "match_count": len(matches)},
-                )
+                raise _match_index_error(index, len(matches))
             source_match = dict(matches[index])
             detail = await self.requests.get_match_detail(customer_token, source_match)
 

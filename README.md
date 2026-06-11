@@ -2,7 +2,7 @@
 
 AstrBot 守望先锋查询插件，参考 [AddOneSecondL/Overstats](https://github.com/AddOneSecondL/Overstats) 的 Dashen 数据链路实现。
 
-## v0.3.3 更新
+## v0.3.4 更新
 
 - 全面迁移 Overstats 非 Web 核心能力，保留原版 Dashen 数据、渲染、AI 分析、总结、榜单、英雄公共数据、商店、补丁和电竞链路。
 - 新增 AstrBot LLM 工具函数，让 AstrBot 根据自然语言选择可调用工具；插件不再内置原版 `auto_route` 自行请求 AI 的路由逻辑。
@@ -12,6 +12,7 @@ AstrBot 守望先锋查询插件，参考 [AddOneSecondL/Overstats](https://gith
 - 主战绩图小字指标改为中文标识：终结、目标、承伤、受疗、收割。
 - AI 锐评默认人设改为毒舌守望评论员，`EXTRA` 结语改为 200 字以内的人格化毒舌小结。
 - AI 锐评遇到 `429/500/502/503/504` 或临时网络错误时会短重试；如果服务端持续过载，仍会返回明确失败提示。
+- 修正最近对局为空时的错误提示：不再显示误导性的 `Use an index from 0 to 0`，会明确提示没有可用最近对局。
 - 移除 OW 猜题模块和音频转码依赖。
 - 移除英雄威能查询模块和 `ow_hero_perk` LLM 工具。
 - 继续使用 `Pillow>=10,<13`，避免与 AstrBot 核心依赖保护冲突。
