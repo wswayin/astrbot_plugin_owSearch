@@ -4,7 +4,6 @@ AstrBot 守望先锋查询插件，参考 [AddOneSecondL/Overstats](https://gith
 
 ## v0.3.4 更新
 
-- 全面迁移 Overstats 非 Web 核心能力，保留原版 Dashen 数据、渲染、AI 分析、总结、榜单、英雄公共数据、商店、补丁和电竞链路。
 - 新增 AstrBot LLM 工具函数，让 AstrBot 根据自然语言选择可调用工具；插件不再内置原版 `auto_route` 自行请求 AI 的路由逻辑。
 - 正式查询图片和 `/ow debug 图片 玩家#12345` 强制走 Overstats 原版渲染。
 - 渲染前会按当前对局预缓存地图、英雄图标、玩家头像和已选威能图标，减少白色占位和空背景。
